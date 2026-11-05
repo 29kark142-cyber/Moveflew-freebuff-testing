@@ -91,7 +91,7 @@ export default function Contact() {
               <span className="form-icon">
                 <MessageSquare />
               </span>
-              <h2>{t("Tell us what’s moving.")}</h2>
+              <h2>{t("Request a Moving Quote")}</h2>
               <p>{t("A few details now. A clearer plan next.")}</p>
               <form onSubmit={submit}>
                 <div className="form-pair">
@@ -144,7 +144,7 @@ export default function Contact() {
                     rows={5}
                     required
                     maxLength={3000}
-                    placeholder={t("Tell us about your move, dates, or workspace questions…")}
+                    placeholder={t("Describe your moving details, dates, or inventory questions…")}
                   />
                 </label>
                 <p className="form-note">

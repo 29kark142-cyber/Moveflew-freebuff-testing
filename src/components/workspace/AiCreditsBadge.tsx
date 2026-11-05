@@ -80,100 +80,106 @@ export default function AiCreditsBadge() {
       </button>
       {open && (
         <Modal title="AI Room Survey Credits" onClose={() => setOpen(false)}>
-          <div className="ws-stack" style={{ display: "grid", gap: 16 }}>
-            <div>
-              <p style={{ margin: 0 }}>
-                <strong>
-                  {data.remaining} of {data.included}
-                </strong>{" "}
-                credits remaining this month.
-              </p>
-              <div
-                style={{
-                  height: 8,
-                  borderRadius: 999,
-                  background: "var(--muted)",
-                  marginTop: 8,
-                  overflow: "hidden",
-                }}
-              >
+          <div className="max-h-[85vh] overflow-y-auto p-4 md:p-6">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <p className="m-0 text-sm leading-normal">
+                  <strong>
+                    {data.remaining} of {data.included}
+                  </strong>{" "}
+                  credits remaining this month.
+                </p>
                 <div
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={data.included}
+                  aria-valuenow={data.remaining}
+                  aria-label="Credit balance"
                   style={{
-                    height: "100%",
-                    width: `${data.percent}%`,
-                    background: "var(--primary)",
+                    height: 8,
+                    borderRadius: 999,
+                    background: "var(--muted)",
+                    overflow: "hidden",
                   }}
-                />
-              </div>
-              <small style={{ color: "var(--muted-foreground)" }}>
-                {data.used} used · {data.purchased} purchased · credits reset monthly with your
-                plan.
-              </small>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gap: 10,
-                gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-              }}
-            >
-              {data.packs.map((pack) => (
-                <div key={pack.id} className="ws-card" style={{ padding: 14 }}>
-                  <b>{pack.label}</b>
-                  <p style={{ fontSize: 22, fontWeight: 700, margin: "4px 0" }}>
-                    {dollars(pack.priceCents)}
-                  </p>
-                  <small style={{ color: "var(--muted-foreground)" }}>
-                    {pack.credits} survey {pack.credits === 1 ? "scan" : "scans"}
-                  </small>
-                  <Button
-                    className="ws-btn"
-                    style={{ width: "100%", marginTop: 10 }}
-                    disabled={Boolean(busy)}
-                    onClick={() => void buy(pack.id)}
-                  >
-                    {busy === `checkout:${pack.id}` ? (
-                      <Loader2 size={14} className="ws-spin" />
-                    ) : null}{" "}
-                    Buy Scan Pack
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="ws-btn"
-                    style={{ width: "100%", marginTop: 4, fontSize: 12 }}
-                    disabled={Boolean(busy)}
-                    onClick={() => void requestInvoice(pack.id)}
-                  >
-                    {busy === `invoice:${pack.id}` ? (
-                      <Loader2 size={14} className="ws-spin" />
-                    ) : null}{" "}
-                    Request on invoice
-                  </Button>
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${data.percent}%`,
+                      background: "var(--primary)",
+                    }}
+                  />
                 </div>
-              ))}
-            </div>
-
-            <p className="ws-helper">
-              {data.checkoutConfigured
-                ? "Buy opens a secure Stripe Checkout. Credits activate only after Stripe confirms payment."
-                : "Online checkout is not configured yet. Request a pack and it is added to your next invoice once payment is confirmed."}
-            </p>
-
-            {data.pending.length > 0 && (
-              <div>
-                <b>Pending requests</b>
-                <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13 }}>
-                  {data.pending.map((item) => (
-                    <li key={item.id}>
-                      {item.credits} credits · {dollars(item.amountCents)}
-                      {item.status ? ` · ${item.status.replace(/_/g, " ")}` : ""} · requested{" "}
-                      {new Date(item.requestedAt).toLocaleDateString()}
-                    </li>
-                  ))}
-                </ul>
+                <p className="m-0 text-xs leading-relaxed text-muted-foreground">
+                  {data.used} used · {data.purchased} purchased · credits reset monthly with your
+                  plan.
+                </p>
               </div>
-            )}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {data.packs.map((pack) => (
+                  <div
+                    key={pack.id}
+                    className="ws-card flex flex-col gap-1"
+                    style={{ padding: 16 }}
+                  >
+                    <b className="text-sm leading-snug">{pack.label}</b>
+                    <p className="m-0 text-2xl font-bold leading-tight">
+                      {dollars(pack.priceCents)}
+                    </p>
+                    <small className="text-muted-foreground">
+                      {pack.credits} survey {pack.credits === 1 ? "scan" : "scans"}
+                    </small>
+                    <div className="mt-3 grid gap-2">
+                      <Button
+                        className="ws-btn w-full"
+                        style={{ margin: 0 }}
+                        disabled={Boolean(busy)}
+                        onClick={() => void buy(pack.id)}
+                      >
+                        {busy === `checkout:${pack.id}` ? (
+                          <Loader2 size={14} className="ws-spin" />
+                        ) : null}{" "}
+                        Buy Scan Pack
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="ws-btn w-full text-xs"
+                        style={{ margin: 0 }}
+                        disabled={Boolean(busy)}
+                        onClick={() => void requestInvoice(pack.id)}
+                      >
+                        {busy === `invoice:${pack.id}` ? (
+                          <Loader2 size={14} className="ws-spin" />
+                        ) : null}{" "}
+                        Request on invoice
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="ws-helper" style={{ margin: 0 }}>
+                {data.checkoutConfigured
+                  ? "Buy opens a secure Stripe Checkout. Credits activate only after Stripe confirms payment."
+                  : "Online checkout is not configured yet. Request a pack and it is added to your next invoice once payment is confirmed."}
+              </p>
+
+              {data.pending.length > 0 && (
+                <div>
+                  <b>Pending requests</b>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13 }}>
+                    {data.pending.map((item) => (
+                      <li key={item.id}>
+                        {item.credits} credits · {dollars(item.amountCents)}
+                        {item.status ? ` · ${item.status.replace(/_/g, " ")}` : ""} · requested{" "}
+                        {new Date(item.requestedAt).toLocaleDateString()}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         </Modal>
       )}

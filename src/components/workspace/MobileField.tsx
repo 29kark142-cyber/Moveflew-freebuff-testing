@@ -16,6 +16,7 @@ import { cacheField,readField,queuedField,enqueueField,syncField,type FieldScope
 import FieldDocuments from './FieldDocuments';
 import { DemoJobButton, ClearDemoButton, isDemoJob } from './BetaTools';
 import type { FieldDocument,FieldDocuments as Documents } from '@/shared/field-documents';
+import { useLocation } from "@/lib/wouter";
 import { Button } from '@/components/ui/button';
 
 type FieldJob = Record<string, unknown> & {
@@ -49,7 +50,11 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
   const [date, setDate] = useState(today);
   const [jobs, setJobs] = useState<FieldJob[] | null>(null);
   const [me, setMe] = useState<Me>(null);
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [, navigate] = useLocation();
+  const [openId, setOpenId] = useState<number | null>(() => {
+    const value = Number(new URLSearchParams(window.location.search).get("job"));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  });
   const [offline, setOffline] = useState(false);
   const [pending, setPending] = useState(0);
   const [syncError,setSyncError]=useState('');
@@ -93,11 +98,27 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
   const replace = (j: FieldJob) => setJobs(list => {const updated=(list ?? []).map(x => (x.id === j.id ? j : x));void cacheField(scope,`jobs:${date}`,{jobs:updated,me});return updated;});
   const open = jobs?.find(j => j.id === openId) ?? null;
 
+  // The open job sheet is kept in the URL (?job=<id>) so a refresh, window blur
+  // or tab switch reopens the same sheet instead of the jobs list.
+  const openJob = useCallback(
+    (id: number | null) => {
+      setOpenId(id);
+      if (id) navigate(`/app/field?job=${id}`, { replace: true });
+      else navigate("/app/field", { replace: true, search: {} });
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    if (!openId || !jobs) return;
+    if (!jobs.some((j) => j.id === openId)) openJob(null);
+  }, [jobs, openId, openJob]);
+
   return (
     <div className="mx-auto w-full max-w-xl space-y-4 pb-24">
       {(offline || pending>0) && <div role="status" className="space-y-2 rounded-md border border-border bg-muted p-3 text-sm text-foreground"><p><WifiOff className="mr-2 inline h-4 w-4"/>{offline?'Offline. ':''}{pending} saved update(s) pending.</p>{syncError && <p className="text-destructive">{syncError}</p>}<Button variant="outline" size="sm" onClick={()=>void flush()}><RefreshCw/>Retry sync</Button></div>}
       {open ? (
-        <JobSheet key={open.id} job={open} me={me} role={role} scope={scope} onBack={() => setOpenId(null)} onChange={replace}
+        <JobSheet key={open.id} job={open} me={me} role={role} scope={scope} onBack={() => openJob(null)} onChange={replace}
           queue={async(jobId,action,body)=>{await enqueueField(scope,jobId,action,body);setPending((await queuedField(scope)).length);setOffline(!navigator.onLine);}} />
       ) : (
         <>
@@ -112,7 +133,7 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
           {['admin','office_admin'].includes(role) && <form className="space-y-2 border-b border-border pb-4" onSubmit={e=>{e.preventDefault();setOfficeSaving(true);void post('/field/settings',{officeEmail,googleReviewUrl:reviewUrl}).then(()=>toast.success('Company settings saved')).catch(e=>toast.error(e.message)).finally(()=>setOfficeSaving(false));}}><label className="block text-sm font-medium text-foreground" htmlFor="field-office-email">Company office email</label><div className="flex flex-wrap gap-2"><input id="field-office-email" type="email" value={officeEmail} onChange={e=>setOfficeEmail(e.target.value)} className="h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-foreground"/><input id="field-review-url" type="url" value={reviewUrl} onChange={e=>setReviewUrl(e.target.value)} placeholder="https://g.page/r/…/review" aria-label="Google review link" className="h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-foreground"/><Button disabled={officeSaving} type="submit" variant="outline">Save company settings</Button></div></form>}
           {jobs === null ? <p className="text-muted-foreground">Loading…</p> : jobs.length === 0 ? (
             <div className="space-y-3 rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground"><p>No jobs assigned for this day.</p><DemoJobButton role={role} onLoaded={() => { if (date === today()) void load(); else setDate(today()); }} /></div>
-          ) : <>{jobs.map(j => <JobCard key={j.id} job={j} onOpen={() => setOpenId(j.id)} />)}{jobs.some(isDemoJob) && <div className="flex justify-center"><ClearDemoButton role={role} onCleared={() => void load()} /></div>}</>}
+          ) : <>{jobs.map(j => <JobCard key={j.id} job={j} onOpen={() => openJob(j.id)} />)}{jobs.some(isDemoJob) && <div className="flex justify-center"><ClearDemoButton role={role} onCleared={() => void load()} /></div>}</>}
         </>
       )}
     </div>

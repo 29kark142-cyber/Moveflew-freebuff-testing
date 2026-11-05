@@ -25,12 +25,24 @@ export function Link({ href, to, children, ...rest }: LinkProps) {
   );
 }
 
-export function useLocation(): [string, (to: string, opts?: { replace?: boolean }) => void] {
+type NavigateOptions = { replace?: boolean; search?: Record<string, string> };
+
+export function useLocation(): [string, (to: string, opts?: NavigateOptions) => void] {
   const pathname = useTLocation({ select: (l) => l.pathname });
   const navigate = useNavigate();
   const go = useCallback(
-    (to: string, opts?: { replace?: boolean }) => {
-      void navigate({ to: to as never, replace: opts?.replace });
+    (to: string, opts?: NavigateOptions) => {
+      // Paths may carry a query string ("?job=12") so view state survives a
+      // refresh; an explicit `search` (including `{}`) overrides it.
+      const [path, query] = to.split("?");
+      const search =
+        opts?.search ??
+        (query !== undefined ? Object.fromEntries(new URLSearchParams(query)) : undefined);
+      void navigate({
+        to: path as never,
+        replace: opts?.replace,
+        ...(search ? { search: search as never } : {}),
+      } as never);
     },
     [navigate],
   );
