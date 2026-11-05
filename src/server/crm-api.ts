@@ -89,6 +89,9 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     destination: "",
     originNotes: "",
     destinationNotes: "",
+    storageAddress: "",
+    routeCoords: null,
+    discountPercent: 0,
     moveSize: "",
     status: "lead",
     pricingMode: "hourly",
@@ -336,6 +339,7 @@ const JOB_PRICING_FIELDS = [
   "distanceMiles",
   "travelMinutes",
   "travelFee",
+  "discountPercent",
   "weightRate",
   "mileRate",
   "fees",
@@ -350,7 +354,7 @@ const JOB_PRICING_FIELDS = [
   "mode",
   "size",
 ];
-const PRICING_ROLES = ["admin", "office_admin", "estimator"];
+const PRICING_ROLES = ["admin", "office_admin", "estimator", "dispatcher"];
 
 async function update(ctx: Ctx, kind: string, id: number, body: unknown) {
   const ws = requireWs(ctx);
@@ -362,7 +366,7 @@ async function update(ctx: Ctx, kind: string, id: number, body: unknown) {
     );
     if (touched.length) {
       if (!PRICING_ROLES.includes(ctx.role ?? ""))
-        fail(403, "Only admins, office admins and estimators can change job pricing");
+        fail(403, "Only admins, office admins, estimators and dispatchers can change job pricing");
       if (
         current.data["signedOffAt"] ||
         current.data["finalBill"] ||

@@ -6,7 +6,10 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { submitContact } from "@/lib/contact.functions";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
+import RouteSummaryCard from "@/components/workspace/RouteSummaryCard";
 import PublicLayout from "@/components/PublicLayout";
+import type { AddressRoute } from "@/lib/places";
 import { useI18n } from "@/lib/i18n";
 
 const SAVE_ERROR = "Your inquiry could not be saved. Please contact us directly.";
@@ -17,6 +20,10 @@ export default function Contact() {
   const [pending, setPending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [pickup, setPickup] = useState("");
+  const [dropoff, setDropoff] = useState("");
+  const [storage, setStorage] = useState("");
+  const [route, setRoute] = useState<AddressRoute | null>(null);
   const errorMessage =
     error === SAVE_ERROR
       ? t("Your inquiry could not be saved. Please contact us directly.")
@@ -137,6 +144,39 @@ export default function Contact() {
                     autoComplete="organization"
                   />
                 </label>
+
+                <div className="form-pair">
+                  <AddressAutocomplete
+                    label={t("Pickup address")}
+                    value={pickup}
+                    onChange={setPickup}
+                    placeholder={t("Street, city, state ZIP")}
+                  />
+                  <AddressAutocomplete
+                    label={t("Drop-off address")}
+                    value={dropoff}
+                    onChange={setDropoff}
+                    placeholder={t("Street, city, state ZIP")}
+                  />
+                </div>
+                <AddressAutocomplete
+                  label={`${t("Storage address")} ${t("(optional)")}`}
+                  value={storage}
+                  onChange={setStorage}
+                  placeholder={t("Storage facility or unit address")}
+                />
+                <RouteSummaryCard
+                  origin={pickup}
+                  destination={dropoff}
+                  onRoute={setRoute}
+                  className="mt-3"
+                />
+                <input type="hidden" name="pickupAddress" value={pickup} />
+                <input type="hidden" name="dropoffAddress" value={dropoff} />
+                <input type="hidden" name="storageAddress" value={storage} />
+                <input type="hidden" name="distanceMiles" value={route?.miles ?? ""} />
+                <input type="hidden" name="travelMinutes" value={route?.minutes ?? ""} />
+
                 <label>
                   {t("How can we help?")}
                   <textarea

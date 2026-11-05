@@ -1,3 +1,4 @@
+import { clampDiscountPercent } from "./route-pricing";
 import type { SurchargeSettings } from "./surcharges";
 
 export type WorkspaceRole =
@@ -46,6 +47,15 @@ export type Job = {
   destination: string;
   originNotes: string;
   destinationNotes: string;
+  /** Optional storage address visited between pickup and drop-off. */
+  storageAddress?: string;
+  /** Geocoded endpoints of the calculated driving route, shown on the job sheet. */
+  routeCoords?: {
+    origin: { lat: number; lng: number } | null;
+    destination: { lat: number; lng: number } | null;
+  } | null;
+  /** Percentage discount an admin or dispatcher applied to the estimate subtotal. */
+  discountPercent?: number;
   moveSize: string;
   status: string;
   pricingMode: "hourly" | "long_distance";
@@ -239,19 +249,20 @@ export function calculateQuote(
     | "mileRate"
     | "inventory"
     | "fees"
+    | "discountPercent"
   >,
   minimumHours = 2.5
 ) {
-  return (
-    Math.round(
-      ((j.pricingMode === "hourly"
-        ? j.hourlyRate * Math.max(minimumHours, j.estimatedHours)
-        : weight(j.inventory) * j.weightRate + j.distanceMiles * j.mileRate) +
-        j.travelFee +
-        j.fees.reduce((n, f) => n + f.amount, 0)) *
-        100
-    ) / 100
-  );
+  const subtotal =
+    (j.pricingMode === "hourly"
+      ? j.hourlyRate * Math.max(minimumHours, j.estimatedHours)
+      : weight(j.inventory) * j.weightRate + j.distanceMiles * j.mileRate) +
+    j.travelFee +
+    j.fees.reduce((n, f) => n + f.amount, 0);
+  // The estimate-level discount is applied once to the rounded subtotal, so the
+  // sheet's preview, the saved total and the invoice all derive from one number.
+  const discount = clampDiscountPercent(j.discountPercent);
+  return Math.round(subtotal * (1 - discount / 100) * 100) / 100;
 }
 export function overlaps(
   a: Pick<Job, "moveDate" | "startHour" | "duration">,

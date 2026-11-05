@@ -66,6 +66,11 @@ import type {
   WorkspaceRole,
 } from "@shared/crm";
 import { calculateQuote, INVENTORY, money, volume, weight } from "@shared/crm";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
+import RouteSummaryCard from "@/components/workspace/RouteSummaryCard";
+import JobRoutePricing from "@/components/workspace/JobRoutePricing";
+import { routeTravelPricing } from "@shared/route-pricing";
+import type { AddressRoute } from "@/lib/places";
 import { crm, getWorkspaceId, type Member } from "@/lib/crm";
 import { getLocale, moverCount, useI18n } from "@/lib/i18n";
 import { engage } from "@/lib/engage-api";
@@ -1223,6 +1228,22 @@ export function EstimateWizardPage({ navigate, path }: PageProps) {
       );
     }
   };
+  // Client-side route check: fills distance, drive time and the travel charge once
+  // both addresses resolve. The estimator can still refresh it from the Maps service.
+  const applyRoute = (route: AddressRoute | null) => {
+    if (!route) return;
+    const travel = routeTravelPricing({
+      distanceMiles: route.miles,
+      travelMinutes: route.minutes,
+      perMileRate: quote.mileRate,
+      crewHourlyRate: quote.hourlyRate,
+    });
+    patch({
+      distanceMiles: travel.miles,
+      travelMinutes: travel.minutes,
+      travelFee: travel.travelCharge,
+    });
+  };
   const changeQuantity = (
     item: Omit<InventoryEntry, "quantity">,
     direction: number
@@ -1399,23 +1420,27 @@ export function EstimateWizardPage({ navigate, path }: PageProps) {
         {step === 1 && (
           <div>
             <div className="ws-form-grid">
-              <Field label={t("Origin address & ZIP")}>
-                <input
-                  className="ws-input"
-                  placeholder={t("Street, city, state ZIP")}
-                  value={quote.origin}
-                  onChange={event => patch({ origin: eventValue(event) })}
-                />
-              </Field>
-              <Field label={t("Destination address & ZIP")}>
-                <input
-                  className="ws-input"
-                  placeholder={t("Street, city, state ZIP")}
-                  value={quote.destination}
-                  onChange={event => patch({ destination: eventValue(event) })}
-                />
-              </Field>
+              <AddressAutocomplete
+                label={t("Origin address & ZIP")}
+                placeholder={t("Street, city, state ZIP")}
+                inputClassName="ws-input"
+                value={quote.origin}
+                onChange={value => patch({ origin: value })}
+              />
+              <AddressAutocomplete
+                label={t("Destination address & ZIP")}
+                placeholder={t("Street, city, state ZIP")}
+                inputClassName="ws-input"
+                value={quote.destination}
+                onChange={value => patch({ destination: value })}
+              />
             </div>
+            <RouteSummaryCard
+              origin={quote.origin}
+              destination={quote.destination}
+              onRoute={applyRoute}
+              className="mt-3"
+            />
             <div className="ws-actions" style={{ marginTop: 14 }}>
               <button
                 className="ws-btn primary"
@@ -2318,6 +2343,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
           </div>
         </aside>
       </div>
+      <JobRoutePricing job={job} role={role} onSaved={() => refresh()} />
       <div className="ws-grid">
         <section className="ws-card ws-card-pad">
           <div className="ws-card-title">
