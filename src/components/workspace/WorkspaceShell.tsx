@@ -11,6 +11,7 @@ import {
   Contact,
   FileText,
   GitBranch,
+  HelpCircle,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -29,12 +30,19 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { Workspace } from "@/lib/crm";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { FeedbackButton } from "./BetaTools";
+import useProductTour from "@/hooks/useProductTour";
 import "@/module-navigation.css";
+/** Stable anchors the onboarding tour targets, independent of translated labels. */
+const TOUR_TARGETS: Record<string, string> = {
+  "/app/jobs": "jobs-nav",
+  "/app/storage": "storage-vaults",
+  "/app/estimates": "estimates-nav",
+};
 const office: WorkspaceRole[] = [
   "admin",
   "office_admin",
@@ -297,6 +305,8 @@ type Props = {
   workspace: Workspace;
   onWorkspace: (id: number) => void;
   onLogout: () => void;
+  /** First sign-in: run the product tour once, after onboarding is finished. */
+  autoStart?: boolean;
 };
 const roleName: Record<WorkspaceRole, string> = {
   admin: "Admin",
@@ -315,10 +325,60 @@ export default function WorkspaceShell({
   workspace,
   onWorkspace,
   onLogout,
+  autoStart = false,
 }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false),
     [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const openRef = useRef(open);
+  const drawerOpenedForTour = useRef(false);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+  // Phones hide the sidebar behind a drawer. The tour opens it so every sidebar step
+  // lands on a visible element; the menu button's own display is the breakpoint test.
+  const drawerMode = () => {
+    if (typeof window === "undefined") return false;
+    const menu = document.querySelector<HTMLElement>(".ws-menu");
+    if (!menu) return false;
+    return window.getComputedStyle(menu).display !== "none";
+  };
+  const revealDrawer = () => {
+    if (!drawerMode() || openRef.current) return false;
+    drawerOpenedForTour.current = true;
+    openRef.current = true;
+    setOpen(true);
+    return true;
+  };
+  const closeTourDrawer = () => {
+    if (!drawerOpenedForTour.current) return;
+    drawerOpenedForTour.current = false;
+    openRef.current = false;
+    setOpen(false);
+  };
+  const tour = useProductTour({
+    autoStart,
+    onBeforeStart: async () => {
+      // Wait for the drawer transition so the first highlight is measured on it.
+      if (revealDrawer()) {
+        await new Promise((resolve) => window.setTimeout(resolve, 320));
+      }
+    },
+    onStepStart: (stepId) => {
+      // Steps 1, 3 and 4 point inside the sidebar; the quote step sits in the page
+      // header, so the drawer is closed again to keep that button visible.
+      if (
+        stepId === "navigation" ||
+        stepId === "job-sheet" ||
+        stepId === "storage"
+      ) {
+        revealDrawer();
+      } else {
+        closeTourDrawer();
+      }
+    },
+    onTourEnd: closeTourDrawer,
+  });
   const go = (href: string) => {
     navigate(href);
     setOpen(false);
@@ -331,6 +391,7 @@ export default function WorkspaceShell({
       <aside
         className={`ws-sidebar ${open ? "is-open" : ""}`}
         aria-label={t("Workspace navigation")}
+        data-tour="workspace-nav"
       >
         <div className="ws-sidebrand">
           <MoveGridBrand />
@@ -384,6 +445,7 @@ export default function WorkspaceShell({
                 <button
                   className={selected ? "active" : ""}
                   onClick={() => go(item.href)}
+                  data-tour={TOUR_TARGETS[item.href]}
                 >
                   <Icon size={18} />
                   <span>{t(item.label)}</span>
@@ -430,6 +492,16 @@ export default function WorkspaceShell({
             <strong>{workspace.name}</strong>
           </div>
           <div className="ws-topbar__user">
+            <button
+              className="ws-btn ws-tour-trigger"
+              data-tour="tour-trigger"
+              title={t("Take the product tour")}
+              aria-label={t("Take the product tour")}
+              onClick={() => void tour.startTour()}
+            >
+              <HelpCircle size={16} />
+              <span className="ws-tour-trigger__label">{t("Product tour")}</span>
+            </button>
             <FeedbackButton />
             <LanguageSwitcher />
             <CircleUserRound size={20} />

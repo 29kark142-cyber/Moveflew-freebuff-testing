@@ -1594,3 +1594,54 @@
     justify-self: start;
   }
 }
+
+/* Product tour (driver.js): keep the popover on-brand with the workspace shell. */
+.moveflew-tour.driver-popover {
+  max-width: 340px;
+  border-radius: 14px;
+  padding: 18px 20px 14px;
+  box-shadow: 0 18px 48px rgba(6, 20, 34, 0.22);
+}
+.moveflew-tour .driver-popover-title {
+  color: var(--navy);
+  font-size: 15px;
+  font-weight: 700;
+}
+.moveflew-tour .driver-popover-description {
+  color: #47566b;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.moveflew-tour .driver-popover-progress-text {
+  color: #8390a1;
+  font-size: 11px;
+}
+.moveflew-tour .driver-popover-footer button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #fff;
+  color: var(--navy);
+  text-shadow: none;
+}
+.moveflew-tour .driver-popover-footer .driver-popover-next-btn,
+.moveflew-tour .driver-popover-footer .driver-popover-done-btn {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+.ws-tour-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-tour-trigger__label {
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .ws-tour-trigger__label {
+    display: none;
+  }
+}

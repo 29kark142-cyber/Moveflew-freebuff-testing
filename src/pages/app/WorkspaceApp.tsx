@@ -260,6 +260,7 @@ export default function WorkspaceApp() {
 
   return (
     <AppearanceProvider key={`${user.id}-${ws.id}`} userId={user.id} workspaceId={ws.id} initial={ws.appearance}><WorkspaceShell
+      autoStart={!needsSetup}
       path={location}
       navigate={navigate}
       user={user}

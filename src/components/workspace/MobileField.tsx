@@ -266,7 +266,7 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-tour="field-job-sheet">
       <button onClick={onBack} className="flex min-h-11 items-center gap-1 text-sm font-medium text-primary"><ChevronLeft className="h-4 w-4" />All jobs</button>
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-2xl font-bold text-foreground">{job.title || job.customerName || `Job #${job.id}`}</h1>

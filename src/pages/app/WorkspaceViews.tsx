@@ -200,6 +200,7 @@ export function DashboardPage({ role, navigate }: PageProps) {
             {role !== "crew" && (
               <button
                 className="ws-btn primary"
+                data-tour="quick-quote"
                 onClick={() => navigate("/app/estimates/new")}
               >
                 <FilePlus2 size={15} />
@@ -2205,7 +2206,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
           {localizedJobMessage(message)}
         </div>
       )}
-      <div className="ws-grid">
+      <div className="ws-grid" data-tour="job-sheet">
         <section className="ws-card ws-card-pad">
           <div className="ws-card-title">
             <div>
