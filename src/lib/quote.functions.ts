@@ -1,10 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { depositRuleSchema } from "./proposal-rules";
 import { clampDiscountPercent } from "@/shared/route-pricing";
 import { jobReference } from "@/shared/tracking";
 import { QUOTE_TOKEN_RE } from "@/shared/quote-dispatch";
+import { quoteAcceptance, quoteDepositCents } from "@/shared/quote-accept";
 
 export type PublicQuoteLine = { label: string; amount: number };
+
+export type PublicQuoteAcceptance = {
+  signedAt: string;
+  paymentId: string;
+  mode: string;
+  amountCents: number;
+  signature: string;
+  confirmation: { email: string; sms: string };
+};
 
 export type PublicQuote = {
   reference: string;
@@ -21,6 +33,9 @@ export type PublicQuote = {
   lines: PublicQuoteLine[];
   discountPercent: number;
   total: number;
+  depositCents: number;
+  payments: { stripe: boolean; testMode: boolean };
+  acceptance: PublicQuoteAcceptance | null;
   company: { name: string; phone: string; email: string };
   sentAt: string | null;
 };
@@ -49,7 +64,7 @@ export const readQuote = createServerFn({ method: "GET" })
 
     const { data: workspace } = await supabaseAdmin
       .from("workspaces")
-      .select("name,company_phone,office_email")
+      .select("name,company_phone,office_email,deposit_rule")
       .eq("id", row.workspace_id)
       .maybeSingle();
 
@@ -76,7 +91,11 @@ export const readQuote = createServerFn({ method: "GET" })
     const discountPercent = clampDiscountPercent(num(job["discountPercent"]));
     const subtotal = base + travelFee + fees.reduce((sum, fee) => sum + fee.amount, 0);
     const round = (value: number) => Math.round(value * 100) / 100;
-    const total = round(subtotal * (1 - discountPercent / 100));
+    const computed = round(subtotal * (1 - discountPercent / 100));
+    // The saved estimate total is what the office sees and what the deposit is calculated
+    // from server-side, so the portal must quote exactly that number when one is stored.
+    const storedTotal = num(job["total"]);
+    const total = storedTotal > 0 ? round(storedTotal) : computed;
     const lines: PublicQuoteLine[] = [
       {
         label: pricingMode === "hourly" ? "Moving crew and truck" : "Weight and mileage",
@@ -85,9 +104,26 @@ export const readQuote = createServerFn({ method: "GET" })
       ...(travelFee > 0 ? [{ label: "Travel fee", amount: round(travelFee) }] : []),
       ...fees,
       ...(discountPercent > 0
-        ? [{ label: `Discount (${discountPercent}%)`, amount: round(total - subtotal) }]
+        ? [{ label: `Discount (${discountPercent}%)`, amount: round(computed - subtotal) }]
         : []),
     ];
+
+    // Deposit comes from the workspace rule or an explicit office override, never the browser.
+    let depositRule = null;
+    try {
+      depositRule = workspace?.deposit_rule
+        ? depositRuleSchema.parse(workspace.deposit_rule)
+        : null;
+    } catch {
+      depositRule = null;
+    }
+    const depositCents = quoteDepositCents(
+      total,
+      depositRule,
+      typeof job["depositOverride"] === "number" ? job["depositOverride"] : null,
+    );
+    const { quotePaymentsAvailability } = await import("@/server/quote-accept");
+    const acceptance = quoteAcceptance(job["quoteAcceptance"]);
 
     return {
       reference: jobReference(row.id),
@@ -104,6 +140,18 @@ export const readQuote = createServerFn({ method: "GET" })
       lines,
       discountPercent,
       total,
+      depositCents,
+      payments: quotePaymentsAvailability(new URL(getRequest().url).hostname),
+      acceptance: acceptance
+        ? {
+            signedAt: acceptance.signedAt,
+            paymentId: acceptance.payment.transactionId,
+            mode: acceptance.payment.mode,
+            amountCents: acceptance.payment.amountCents,
+            signature: acceptance.signature,
+            confirmation: acceptance.confirmation ?? { email: "skipped", sms: "skipped" },
+          }
+        : null,
       company: {
         name: str(workspace?.name),
         phone: str(workspace?.company_phone),

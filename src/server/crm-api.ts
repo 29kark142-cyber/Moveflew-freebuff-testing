@@ -240,6 +240,10 @@ const SERVER_FIELDS = new Set([
   "quoteDispatch",
   "quoteSentAt",
   "quoteDispatchedAt",
+  // Quote acceptance signatures, payment receipts and intents are server-written only.
+  "quoteAcceptance",
+  "quoteAcceptedAt",
+  "quoteDepositIntent",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 

@@ -43,7 +43,11 @@ type DeliveryResult = {
   providerId?: string;
 };
 
-async function deliverEmail(to: string, subject: string, body: string): Promise<DeliveryResult> {
+export async function deliverEmail(
+  to: string,
+  subject: string,
+  body: string,
+): Promise<DeliveryResult> {
   const key = process.env["SENDGRID_API_KEY"];
   const from = process.env["MESSAGING_FROM_EMAIL"];
   if (!key || !from) {
@@ -79,7 +83,7 @@ async function deliverEmail(to: string, subject: string, body: string): Promise<
   }
 }
 
-async function deliverSms(to: string, body: string): Promise<DeliveryResult> {
+export async function deliverSms(to: string, body: string): Promise<DeliveryResult> {
   const sid = process.env["TWILIO_ACCOUNT_SID"];
   const token = process.env["TWILIO_AUTH_TOKEN"];
   const from = process.env["TWILIO_FROM_NUMBER"];

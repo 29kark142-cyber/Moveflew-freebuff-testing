@@ -1,7 +1,8 @@
 // Job activity timeline: the server appends field events (completed checklist phases, customer
 // sign-offs) and the office job sheet renders them newest first.
 
-export type JobActivityKind = "phase_completed" | "origin_signoff" | "final_signoff" | "quote_sent";
+export type JobActivityKind =
+  "phase_completed" | "origin_signoff" | "final_signoff" | "quote_sent" | "deposit_paid";
 
 export type JobActivityEvent = {
   /** Stable id, so an offline replay of the same operation never duplicates an event. */

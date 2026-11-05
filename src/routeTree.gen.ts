@@ -40,6 +40,8 @@ import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/str
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicV1LeadsRouteImport } from './routes/api/public/v1/leads'
 import { Route as ApiPublicV1QuotesRouteImport } from './routes/api/public/v1/quotes'
+import { Route as ApiQuoteTokenAcceptRouteImport } from './routes/api.quote.$token.accept'
+import { Route as ApiQuoteTokenDepositIntentRouteImport } from './routes/api.quote.$token.deposit-intent'
 import { Route as ApiV1PublicQuotesRouteImport } from './routes/api/v1/public/quotes'
 import { Route as ApiPublicV1HooksTokenRouteImport } from './routes/api/public/v1/hooks/$token'
 import { Route as ApiPublicV1TrackTokenRouteImport } from './routes/api/public/v1/track/$token'
@@ -201,6 +203,17 @@ const ApiPublicV1QuotesRoute = ApiPublicV1QuotesRouteImport.update({
   path: '/api/public/v1/quotes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiQuoteTokenAcceptRoute = ApiQuoteTokenAcceptRouteImport.update({
+  id: '/api/quote/$token/accept',
+  path: '/api/quote/$token/accept',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiQuoteTokenDepositIntentRoute =
+  ApiQuoteTokenDepositIntentRouteImport.update({
+    id: '/api/quote/$token/deposit-intent',
+    path: '/api/quote/$token/deposit-intent',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1PublicQuotesRoute = ApiV1PublicQuotesRouteImport.update({
   id: '/api/v1/public/quotes',
   path: '/api/v1/public/quotes',
@@ -249,6 +262,8 @@ export interface FileRoutesByFullPath {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
+  '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
+  '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
@@ -285,6 +300,8 @@ export interface FileRoutesByTo {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
+  '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
+  '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
@@ -322,6 +339,8 @@ export interface FileRoutesById {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
+  '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
+  '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
@@ -360,6 +379,8 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
+    | '/api/quote/$token/accept'
+    | '/api/quote/$token/deposit-intent'
     | '/api/v1/public/quotes'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
@@ -396,6 +417,8 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
+    | '/api/quote/$token/accept'
+    | '/api/quote/$token/deposit-intent'
     | '/api/v1/public/quotes'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
@@ -432,6 +455,8 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
+    | '/api/quote/$token/accept'
+    | '/api/quote/$token/deposit-intent'
     | '/api/v1/public/quotes'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
@@ -469,6 +494,8 @@ export interface RootRouteChildren {
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicV1LeadsRoute: typeof ApiPublicV1LeadsRoute
   ApiPublicV1QuotesRoute: typeof ApiPublicV1QuotesRoute
+  ApiQuoteTokenAcceptRoute: typeof ApiQuoteTokenAcceptRoute
+  ApiQuoteTokenDepositIntentRoute: typeof ApiQuoteTokenDepositIntentRoute
   ApiV1PublicQuotesRoute: typeof ApiV1PublicQuotesRoute
   ApiPublicV1HooksTokenRoute: typeof ApiPublicV1HooksTokenRoute
   ApiPublicV1TrackTokenRoute: typeof ApiPublicV1TrackTokenRoute
@@ -693,6 +720,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1QuotesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/quote/$token/accept': {
+      id: '/api/quote/$token/accept'
+      path: '/api/quote/$token/accept'
+      fullPath: '/api/quote/$token/accept'
+      preLoaderRoute: typeof ApiQuoteTokenAcceptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/quote/$token/deposit-intent': {
+      id: '/api/quote/$token/deposit-intent'
+      path: '/api/quote/$token/deposit-intent'
+      fullPath: '/api/quote/$token/deposit-intent'
+      preLoaderRoute: typeof ApiQuoteTokenDepositIntentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/public/quotes': {
       id: '/api/v1/public/quotes'
       path: '/api/v1/public/quotes'
@@ -750,6 +791,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicV1LeadsRoute: ApiPublicV1LeadsRoute,
   ApiPublicV1QuotesRoute: ApiPublicV1QuotesRoute,
+  ApiQuoteTokenAcceptRoute: ApiQuoteTokenAcceptRoute,
+  ApiQuoteTokenDepositIntentRoute: ApiQuoteTokenDepositIntentRoute,
   ApiV1PublicQuotesRoute: ApiV1PublicQuotesRoute,
   ApiPublicV1HooksTokenRoute: ApiPublicV1HooksTokenRoute,
   ApiPublicV1TrackTokenRoute: ApiPublicV1TrackTokenRoute,
