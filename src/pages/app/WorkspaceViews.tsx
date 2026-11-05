@@ -69,6 +69,7 @@ import { calculateQuote, INVENTORY, money, volume, weight } from "@shared/crm";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import RouteSummaryCard from "@/components/workspace/RouteSummaryCard";
 import JobRoutePricing from "@/components/workspace/JobRoutePricing";
+import JobFieldProgress from "@/components/workspace/JobFieldProgress";
 import { routeTravelPricing } from "@shared/route-pricing";
 import type { AddressRoute } from "@/lib/places";
 import { crm, getWorkspaceId, type Member } from "@/lib/crm";
@@ -2344,6 +2345,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
         </aside>
       </div>
       <JobRoutePricing job={job} role={role} onSaved={() => refresh()} />
+      <JobFieldProgress job={job} onRefresh={() => refresh()} />
       <div className="ws-grid">
         <section className="ws-card ws-card-pad">
           <div className="ws-card-title">

@@ -1,5 +1,7 @@
 import { clampDiscountPercent } from "./route-pricing";
 import type { SurchargeSettings } from "./surcharges";
+import type { JobActivityEvent } from "./job-activity";
+import type { MoveChecklistState } from "./move-checklist";
 
 export type WorkspaceRole =
   | "admin"
@@ -78,6 +80,10 @@ export type Job = {
   clockIn: string | null;
   clockOut: string | null;
   completedSignature: string | null;
+  /** Move-day checklist and milestone sign-offs written by the crew app. */
+  moveChecklist?: MoveChecklistState | null;
+  /** Server-appended job activity log, newest first. */
+  activity?: JobActivityEvent[];
   invoiceStatus: string;
   actualHours: number | null;
   finalTotal: number | null;

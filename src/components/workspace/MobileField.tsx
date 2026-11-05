@@ -15,6 +15,7 @@ import { fieldStatus,finalBill,billableHours } from '@shared/field';
 import { cacheField,readField,queuedField,enqueueField,syncField,queueSummary,queueSyncLabel,queueDetail,type FieldQueueSummary,type FieldScope,type FieldOperation } from '@/lib/field-offline';
 import JobInvoicePdfButton from './JobInvoicePdfButton';
 import FieldDocuments from './FieldDocuments';
+import MoveChecklist from "./MoveChecklist";
 import { DemoJobButton, ClearDemoButton, isDemoJob } from './BetaTools';
 import type { FieldDocument,FieldDocuments as Documents } from '@/shared/field-documents';
 import { useLocation } from "@/lib/wouter";
@@ -26,7 +27,11 @@ type FieldJob = Record<string, unknown> & {
   completedSignature?: string | null; finalPayment?: { method: string; amountCents: number; mode?: string } | null;
   fieldDocuments?:Documents;fieldPdf?:{ready?:boolean;emailStatus:string};fieldDocumentId?:string;
   preMoveInspection?: PreMoveRecord | null; trackingToken?: string;
-  tip?: TipRecord | null; reviewRequestedAt?: string | null; reviewUrl?: string | null;
+  tip?: TipRecord | null;
+  reviewRequestedAt?: string | null;
+  reviewUrl?: string | null;
+  moveChecklist?: unknown;
+  activity?: unknown;
 };
 type Me = { id: number; name: string; crewRole: string } | null;
 type Photo = DamagePhoto;
@@ -293,6 +298,23 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
       </section>
 
       <FieldDocuments documents={{...job.fieldDocuments,...(job.completedSignature && !job.fieldDocuments?.bol?.signature?{bol:{kind:'bol' as const,notes:job.fieldDocuments?.bol?.notes || '',items:job.fieldDocuments?.bol?.items || [],signature:job.completedSignature,signedAt:String(job['signedOffAt'] || '')}}:{})}} job={job} scope={scope} locked={Boolean(job.completedSignature)} onSave={saveDocument}/>
+
+      <MoveChecklist
+        jobId={job.id}
+        saved={job.moveChecklist}
+        locked={Boolean(job.completedSignature)}
+        crewName={me?.name ?? ""}
+        crewId={me?.id ?? null}
+        scope={scope}
+        queue={queue}
+        onSaved={(patch) =>
+          onChange({
+            ...job,
+            moveChecklist: patch.moveChecklist,
+            ...(patch.activity ? { activity: patch.activity } : {}),
+          } as FieldJob)
+        }
+      />
 
       <PreMoveInspection
         jobId={job.id}

@@ -230,6 +230,10 @@ const SERVER_FIELDS = new Set([
   "fieldDocuments",
   "fieldDocumentId",
   "fieldPdf",
+  // Field checklist progress, milestone sign-offs and the activity log are server-appended only.
+  "moveChecklist",
+  "moveChecklistUpdatedAt",
+  "activity",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 

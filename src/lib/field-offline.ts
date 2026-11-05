@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getWorkspaceId } from './crm';
 
 export type FieldScope = { userId: string; workspaceId: number };
-export type FieldOperation = { id: string; scope: string; jobId: number; action: 'phase'|'photos'|'documents'|'signoff'|'pre-move'|'tip'; body: Record<string, unknown>; at: number; error?: string };
+export type FieldOperation = { id: string; scope: string; jobId: number; action: 'phase'|'photos'|'documents'|'signoff'|'pre-move'|'tip'|'checklist'|'milestone-signoff'; body: Record<string, unknown>; at: number; error?: string };
 export const scopeKey = (s: FieldScope) => `${s.userId}:${s.workspaceId}`;
 const db = () => openDB('moveflew-field-v1', 1, { upgrade(d) { d.createObjectStore('queue', { keyPath: 'id' }); d.createObjectStore('cache'); } });
 export async function cacheField(scope: FieldScope, key: string, value: unknown) { const d = await db(); await d.put('cache', value, `${scopeKey(scope)}:${key}`); }
@@ -42,7 +42,7 @@ export type FieldQueueSummary = { total: number; photos: number; signatures: num
 /** Counts what is still waiting on the phone so the field banner can name it. */
 export function queueSummary(operations: FieldOperation[]): FieldQueueSummary {
   const photos = operations.filter(op => op.action === 'photos').length;
-  const signatures = operations.filter(op => op.action === 'signoff' || op.action === 'pre-move' || op.action === 'documents').length;
+  const signatures = operations.filter(op => op.action === 'signoff' || op.action === 'pre-move' || op.action === 'documents' || op.action === 'milestone-signoff').length;
   return { total: operations.length, photos, signatures };
 }
 /** Banner copy: work captured offline is never dropped silently. */

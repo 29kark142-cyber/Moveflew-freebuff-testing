@@ -10,6 +10,8 @@ import { companyReviewUrl, saveCompanyReviewUrl } from "./notifications";
 import { isPreviewHost } from "../lib/payment-mode";
 import { documentSchema, operationSchema, type FieldDocuments, type FieldSnapshot } from '../shared/field-documents';
 import { finalizeFieldSnapshot, prepareFieldPdf, streamFieldPdf } from './field-documents';
+import { appendJobActivity, jobActivity } from '../shared/job-activity';
+import { checklistProgress, completedPhases, isChecklistItem, milestoneUnlocked, normalizeChecklist, MOVE_CHECKLIST_PHASES } from '../shared/move-checklist';
 
 type Rec = Record<string, unknown> & { id: number };
 type Helpers = {
@@ -38,6 +40,9 @@ function view(job: Rec) {
     fieldStatus: fieldStatus(t),
     nextPhase: nextPhase(t),
     bill: finalBill(job, hours),
+    // Move-day checklist state and the activity timeline are stored on the job record itself.
+    moveChecklist: normalizeChecklist(job["moveChecklist"]),
+    activity: jobActivity(job["activity"]),
   };
 }
 
@@ -143,6 +148,113 @@ export async function fieldRoute(ctx: Ctx, method: string, parts: string[], body
     return view(await h.saveData(ctx, id, patch));
   }
 
+  // Structured move-day checklist. Items are ticked one at a time so an offline replay can be
+  // merged item by item, and the crew member is taken from the session, never from the phone.
+  if (sub === "checklist" && method === "POST") {
+    if (job["completedSignature"]) h.fail(409, "The job is signed off, so the checklist is locked");
+    const b = z
+      .object({
+        item: z.string().max(80),
+        done: z.boolean(),
+        at: z.string().optional(),
+        operationId: operationSchema,
+      })
+      .parse(await body());
+    if (!isChecklistItem(b.item)) h.fail(400, "Unknown checklist item");
+    const self = await me(ctx, h);
+    const before = normalizeChecklist(job["moveChecklist"]);
+    const at = acceptedTime(b.at);
+    const byName = String(self?.["name"] ?? ctx.role ?? "Office");
+    const after = {
+      ...before,
+      items: {
+        ...before.items,
+        [b.item]: { done: b.done, at: b.done ? at : null, crewId: self?.id ?? null, byName },
+      },
+    };
+    const wasComplete = completedPhases(before);
+    // A phase that just became complete is appended to the job activity timeline once.
+    const events = completedPhases(after)
+      .filter((key) => !wasComplete.includes(key))
+      .map((key) => {
+        const phase = MOVE_CHECKLIST_PHASES.find((entry) => entry.key === key);
+        const progress = checklistProgress(after);
+        return {
+          id: `checklist-phase:${key}`,
+          kind: "phase_completed" as const,
+          title: "Phase Completed",
+          detail: `${phase?.label ?? key} · ${progress.done}/${progress.total} items`,
+          at,
+          by: byName,
+        };
+      });
+    const patch: Record<string, unknown> = { moveChecklist: after, moveChecklistUpdatedAt: at };
+    if (events.length) patch["activity"] = appendJobActivity(job["activity"], events);
+    return view(await h.saveData(ctx, id, patch));
+  }
+
+  // Customer and crew lead sign the origin and the final destination completion together.
+  if (sub === "milestone-signoff" && method === "POST") {
+    const png = z
+      .string()
+      .regex(/^data:image\/png;base64,iVBOR/)
+      .min(100)
+      .max(400_000);
+    const b = z
+      .object({
+        milestone: z.enum(["origin", "final"]),
+        customerSignature: png,
+        crewSignature: png,
+        crewName: z.string().trim().max(120).default(""),
+        geo: z
+          .object({
+            lat: z.number().min(-90).max(90),
+            lng: z.number().min(-180).max(180),
+            accuracy: z.number().nonnegative().max(100_000).optional(),
+          })
+          .nullish(),
+        operationId: operationSchema,
+      })
+      .parse(await body());
+    const state = normalizeChecklist(job["moveChecklist"]);
+    if (state.signoffs[b.milestone]) return view(job); // offline replay of an accepted signature
+    if (!milestoneUnlocked(state, b.milestone))
+      h.fail(409, "Finish this milestone's checklist before signing");
+    const self = await me(ctx, h);
+    const signedAt = new Date().toISOString();
+    const crewName = b.crewName || String(self?.["name"] ?? "");
+    const next = {
+      ...state,
+      signoffs: {
+        ...state.signoffs,
+        [b.milestone]: {
+          customerSignature: b.customerSignature,
+          crewSignature: b.crewSignature,
+          signedAt,
+          crewName,
+          geo: b.geo ?? null,
+          byUserId: ctx.userId,
+        },
+      },
+    };
+    const progress = checklistProgress(next);
+    const event = {
+      id: `milestone:${b.milestone}`,
+      kind: b.milestone === "final" ? ("final_signoff" as const) : ("origin_signoff" as const),
+      title: b.milestone === "final" ? "Final Sign-off Received" : "Origin Sign-off Received",
+      detail: `${progress.done}/${progress.total} checklist items complete`,
+      at: signedAt,
+      by: crewName || ctx.userId,
+    };
+    return view(
+      await h.saveData(ctx, id, {
+        moveChecklist: next,
+        moveChecklistUpdatedAt: signedAt,
+        activity: appendJobActivity(job["activity"], [event]),
+      }),
+    );
+  }
+
   if (sub === "photos") {
     if (method === "GET") {
       const all = (await h.list(ctx, "damage")) as Rec[];
@@ -242,8 +354,22 @@ export async function fieldRoute(ctx: Ctx, method: string, parts: string[], body
     const photos=((await h.list(ctx,'damage')) as Rec[]).filter(p=>p['jobId']===id).map(p=>({note:String(p['note']||''),phase:String(p['phase']||''),photoUrl:String(p['photoUrl']||'')}));
     const snapshot:FieldSnapshot={company:{name:company?.name || '',officeEmail:company?.office_email || '',phone:company?.company_phone || ''},job:view(job),documents:(job['fieldDocuments'] || {}) as FieldDocuments,photos,signature:b.signature,signedAt:new Date().toISOString(),by:ctx.userId};
     if(!snapshot.documents.bol?.signature)snapshot.documents={...snapshot.documents,bol:{kind:'bol',notes:snapshot.documents.bol?.notes || '',items:snapshot.documents.bol?.items || [],signature:b.signature,signedAt:snapshot.signedAt,by:ctx.userId}};
-    const pdf=await finalizeFieldSnapshot(ctx,id,b.operationId,snapshot);
-    return {...view(await loadJob(ctx,h,id)),fieldPdf:pdf};
+    const pdf = await finalizeFieldSnapshot(ctx, id, b.operationId, snapshot);
+    const signed = await loadJob(ctx, h, id);
+    // The customer signature is the job's final milestone, so it joins the activity timeline.
+    const logged = await h.saveData(ctx, id, {
+      activity: appendJobActivity(signed["activity"], [
+        {
+          id: "signoff:bol",
+          kind: "final_signoff" as const,
+          title: "Final Sign-off Received",
+          detail: "Customer signed the Bill of Lading",
+          at: snapshot.signedAt,
+          by: ctx.userId,
+        },
+      ]),
+    });
+    return { ...view(logged), fieldPdf: pdf };
   }
 
   // 1-click crew tip captured right after the customer signs the eBOL: the amount joins the
