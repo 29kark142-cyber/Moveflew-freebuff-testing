@@ -177,6 +177,18 @@ export const crm = {
       duration: number;
     }
   ) => crmFetch<Job>(`/jobs/${id}/assign`, json("POST", value)),
+  /** Calendar reschedule: capacity/overlap checks, activity logging and crew notifications. */
+  scheduleJob: (
+    id: number,
+    value: {
+      truckId: number | null;
+      crewIds: number[];
+      startHour: number;
+      moveDate: string;
+      duration: number;
+      notifyCrew: boolean;
+    }
+  ) => crmFetch<Job>(`/jobs/${id}/schedule`, json("POST", value)),
   distance: (origin: string, destination: string) =>
     crmFetch<{
       distanceMiles: number;

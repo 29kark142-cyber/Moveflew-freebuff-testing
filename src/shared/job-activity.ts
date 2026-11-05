@@ -2,7 +2,13 @@
 // sign-offs) and the office job sheet renders them newest first.
 
 export type JobActivityKind =
-  "phase_completed" | "origin_signoff" | "final_signoff" | "quote_sent" | "deposit_paid";
+  | "phase_completed"
+  | "origin_signoff"
+  | "final_signoff"
+  | "quote_sent"
+  | "deposit_paid"
+  | "job_rescheduled"
+  | "crew_assigned";
 
 export type JobActivityEvent = {
   /** Stable id, so an offline replay of the same operation never duplicates an event. */

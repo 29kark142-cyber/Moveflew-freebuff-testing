@@ -121,6 +121,13 @@ const NAV: NavigationItem[] = [
     group: "Moving operations",
   },
   {
+    href: "/app/schedule",
+    label: "Schedule",
+    icon: CalendarDays,
+    group: "Moving operations",
+    roles: management,
+  },
+  {
     href: "/app/dispatch",
     label: "Dispatch",
     icon: CalendarDays,

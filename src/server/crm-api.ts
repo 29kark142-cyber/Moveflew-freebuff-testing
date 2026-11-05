@@ -244,6 +244,8 @@ const SERVER_FIELDS = new Set([
   "quoteAcceptance",
   "quoteAcceptedAt",
   "quoteDepositIntent",
+  // Crew shift notification receipts are written by the scheduling endpoint only.
+  "crewDispatch",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -1328,6 +1330,31 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
       return toRecord(await getOne(ctx, "job", id), ws);
     }
     if (sub === "assign" && method === "POST") return assignJob(ctx, id, await body());
+    // Calendar scheduling: capacity, overlap, activity logging and optional crew notifications.
+    if (sub === "schedule" && method === "POST") {
+      if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
+        fail(403, "Only dispatch staff can schedule jobs");
+      const { scheduleJob } = await import("./schedule");
+      const result = await scheduleJob(
+        {
+          getJob: (jobId) => getOne(ctx, "job", jobId),
+          listTrucks: async () =>
+            (await list(ctx, "truck")).map((row) => row as Record<string, unknown>),
+          listCrew: async () =>
+            (await list(ctx, "crew")).map((row) => row as Record<string, unknown>),
+          listJobs: async () =>
+            (await list(ctx, "job")).map((row) => row as Record<string, unknown>),
+          save: (jobId, patch) => saveData(ctx, jobId, patch),
+          fail,
+          actor: ctx.email || "Dispatch",
+          companyName: "",
+        },
+        id,
+        await body(),
+      );
+      const saved = toRecord(await getOne(ctx, "job", id), requireWs(ctx));
+      return { ...saved, schedule: result } as typeof saved & { schedule: typeof result };
+    }
     if (sub === "clock" && method === "POST") {
       const { action } = (await body()) as { action?: string };
       const now = new Date().toISOString();

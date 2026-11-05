@@ -1,6 +1,7 @@
 import OnboardingWizard from "@/components/workspace/OnboardingWizard";
 import WorkspaceModules, { isNativeModule } from '@/components/workspace/modules/WorkspaceModules';
 import StorageVaultPage from '@/pages/app/StorageVaultPage';
+import SchedulePage from '@/pages/app/SchedulePage';
 import OperationalReports from '@/components/workspace/OperationalReports';
 import WorkspaceTariffs from '@/components/workspace/WorkspaceTariffs';
 import BillingPanel from "@/components/workspace/BillingPanel";
@@ -216,6 +217,7 @@ export default function WorkspaceApp() {
   if (location === "/app/onboarding" || needsSetup)
     page = <OnboardingWizard workspaceId={ws.id} onDone={async () => { await load(); navigate("/app/dashboard"); }} />;
   else if (location === "/app/settings/billing") page = <BillingPanel workspace={ws} />;
+  else if (location === "/app/schedule") page = <SchedulePage {...pageProps} />;
   else if (location === "/app/dispatch") page = <DispatchPage {...pageProps} />;
   else if (location === '/app/reports') page = <OperationalReports workspaceName={ws.name} />;
   else if (location === '/app/tariffs') page = <WorkspaceTariffs workspaceName={ws.name} role={ws.role} readOnly={isReadOnly(ws.subscriptionStatus)} />;
