@@ -367,11 +367,7 @@ export default function WorkspaceShell({
     onStepStart: (stepId) => {
       // Steps 1, 3 and 4 point inside the sidebar; the quote step sits in the page
       // header, so the drawer is closed again to keep that button visible.
-      if (
-        stepId === "navigation" ||
-        stepId === "job-sheet" ||
-        stepId === "storage"
-      ) {
+      if (stepId === "navigation" || stepId === "job-sheet" || stepId === "storage") {
         revealDrawer();
       } else {
         closeTourDrawer();
