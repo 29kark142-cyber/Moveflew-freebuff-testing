@@ -1,0 +1,10 @@
+Contact: mailto:support@moveflew.com
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: en, ru
+Canonical: https://moveflew.lovable.app/.well-known/security.txt
+Policy: https://moveflew.lovable.app/terms
+
+# Responsible disclosure
+# Please report vulnerabilities privately to the contact above and give us
+# reasonable time to fix them before public disclosure. Do not access, modify
+# or delete other customers' data, degrade service, or use social engineering.

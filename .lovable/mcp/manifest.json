@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "sdk_version": "3.3.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "manus-project-migration",
+      "version": "0.1.0",
+      "title": "Manus Project Migration"
+    },
+    "tools": [
+      {
+        "name": "get_moving_rates",
+        "title": "Get moving rates",
+        "description": "List MoveFlew's public hourly rates by crew size, minimum hours, packing rate and box prices.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "estimate_move_cost",
+        "title": "Estimate move cost",
+        "description": "Estimate labor cost for a move from crew size and hours, using the same math as the public pricing calculator.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "movers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6,
+              "description": "Number of movers (1-6)."
+            },
+            "hours": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 24,
+              "description": "Expected hours; the 2.5-hour minimum is applied."
+            },
+            "packing": {
+              "description": "Add standard packing help.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "movers",
+            "hours"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_contact_info",
+        "title": "Get contact info",
+        "description": "Return MoveFlew's public support email and product summary.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

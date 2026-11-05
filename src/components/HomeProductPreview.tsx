@@ -1,0 +1,52 @@
+import { useRef, useState } from "react";
+import { ArrowUpRight, Box, CalendarDays, Check, CheckCheck, ChevronLeft, ChevronRight, CircleHelp, ClipboardList, FileText, LayoutDashboard, MapPin, MoreHorizontal, Navigation, PenLine, RotateCcw, Truck, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const moves = [
+  { customer: "Alex Morgan", route: "Lincoln Park → Evanston", crew: "James, Mike + 1", time: "8:00 AM – 12:00 PM", truck: "Truck 01", code: "AM", tone: "blue" },
+  { customer: "Sarah Chen", route: "West Loop → Oak Park", crew: "Daniel, Chris", time: "9:00 AM – 1:00 PM", truck: "Truck 02", code: "SC", tone: "violet" },
+  { customer: "Jordan Davis", route: "Lakeview → Wicker Park", crew: "James, Mike + 1", time: "1:30 PM – 5:00 PM", truck: "Truck 01", code: "JD", tone: "amber" },
+];
+
+export function DispatchPreview() {
+  const [day, setDay] = useState(0);
+  const [view, setView] = useState("Schedule");
+  const [selected, setSelected] = useState<(typeof moves)[number] | null>(null);
+  const shown = day === 0 ? moves : moves.slice(0, 2);
+  return <div className="mf-dashboard-stage">
+    <div className="mf-browser">
+      <div className="mf-browser-bar"><span className="mf-browser-dots"><i /><i /><i /></span><span><span aria-hidden="true">▣</span> app.moveflew.com / dispatch</span><MoreHorizontal size={14} /></div>
+      <div className="mf-app">
+        <aside className="mf-app-sidebar"><span className="mf-mini-brand"><Box size={18} /> <b>MoveFlew</b></span><span className="mf-workspace">Northside Movers <ChevronRight size={12} /></span><span><LayoutDashboard /> Overview</span><span><Users /> Leads</span><span><FileText /> Estimates</span><span className="is-selected"><CalendarDays /> Dispatch</span><span><Truck /> Fleet &amp; crew</span><span><ClipboardList /> Invoices</span><span className="mf-sidebar-bottom"><CircleHelp /> Help center</span></aside>
+        <div className="mf-app-main"><div className="mf-app-heading"><div><small>OPERATIONS</small><h3>Dispatch board</h3></div><span className="mf-live"><i /> All crews ready</span></div>
+          <div className="mf-stats"><div><small>Scheduled moves</small><strong>{shown.length.toString().padStart(2, "0")}</strong></div><div><small>Active crews</small><strong>02 <span>of 3</span></strong></div><div><small>Conflicts</small><strong>0 <CheckCheck size={16} /></strong></div></div>
+          <div className="mf-board-toolbar"><div className="mf-day-nav"><Button variant="ghost" size="icon" aria-label="Previous demo day" onClick={() => setDay(day - 1)}><ChevronLeft /></Button><strong>{["Mon, Nov 2", "Tue, Nov 3", "Wed, Nov 4"][((day % 3) + 3) % 3]}</strong><Button variant="ghost" size="icon" aria-label="Next demo day" onClick={() => setDay(day + 1)}><ChevronRight /></Button></div><div className="mf-segment">{["Schedule", "List"].map(label => <Button key={label} variant="ghost" size="sm" aria-pressed={view === label} onClick={() => setView(label)}>{label}</Button>)}</div></div>
+          {view === "Schedule" ? <div className="mf-schedule"><div className="mf-hours"><span>CREW / TRUCK</span><span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span></div>{shown.map((move, i) => <div className="mf-schedule-row" key={move.customer}><div className="mf-truck"><Truck size={15} /><b>{move.truck}</b><small>{move.crew.split(",")[0]}’s crew</small></div><Button variant="ghost" className={`mf-move mf-move-${move.tone} mf-slot-${i}`} onClick={() => setSelected(move)}><strong>{move.customer}</strong><span>{move.route}</span><small>{move.time}</small></Button></div>)}</div> : <div className="mf-move-list">{shown.map(move => <Button variant="ghost" key={move.customer} onClick={() => setSelected(move)}><span>{move.customer}<small>{move.route}</small></span><span>{move.truck}<small>{move.time}</small></span><ChevronRight size={14} /></Button>)}</div>}
+          <div className="mf-app-footer"><span><CheckCheck size={13} /> No overlapping assignments</span><span>3 trucks · 8 crew members</span></div>
+        </div>
+      </div>
+    </div>
+    <span className="mf-floating mf-distance"><Navigation size={16} /><span><b>Auto-Distance Calculated</b><small>24.8 mi · 42 min drive</small></span><Check size={15} /></span>
+    <span className="mf-floating mf-signed"><span className="mf-check-icon"><Check size={16} /></span><span><b>BOL Signed</b><small>Customer sign-off complete</small></span></span>
+    <div className="mf-preview-caption"><span className="mf-live"><i /> A connected day, from start to finish.</span><span>Sample workspace</span></div>
+    <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent className="mf-demo-dialog"><DialogHeader><DialogTitle>{selected?.customer} · Move details</DialogTitle></DialogHeader><p>{selected?.route}</p><dl><div><dt>Schedule</dt><dd>{selected?.time}</dd></div><div><dt>Truck</dt><dd>{selected?.truck}</dd></div><div><dt>Assigned crew</dt><dd>{selected?.crew}</dd></div><div><dt>Status</dt><dd>Booked · No conflicts</dd></div></dl><small>Illustrative sample · no customer records</small></DialogContent></Dialog>
+  </div>;
+}
+
+export function RoutingPreview() {
+  return <div className="mf-routing-preview"><div className="mf-map"><svg viewBox="0 0 420 205" role="img" aria-label="Illustrative moving route from dispatch base to pickup and drop-off"><g className="mf-map-blocks"><path d="M0 15h85v35H0zm105 0h100v35H105zm120 0h90v35H225zm110 0h85v35H335zM0 70h65v50H0zm85 0h110v50H85zm130 0h100v50H215zm120 0h85v50H335zM0 140h85v65H0zm105 0h90v65H105zm110 0h100v65H215zm120 0h85v65H335z" /></g><path className="mf-map-river" d="M350-20c-20 90 65 120 25 250" /><path className="mf-map-route" d="M65 150V60h150v70h100" /><g className="mf-map-pins"><circle cx="65" cy="150" r="8" /><circle cx="215" cy="60" r="8" /><circle cx="315" cy="130" r="8" /></g><g className="mf-map-labels"><text x="24" y="178">Dispatch base</text><text x="184" y="40">Pickup</text><text x="286" y="159">Drop-off</text></g></svg><span><MapPin size={12} /> Chicago, IL</span></div><div className="mf-route-summary"><span><Navigation size={17} /><b>Route calculated</b></span><div><small>Total distance</small><strong>24.8 <small>mi</small></strong></div><div><small>Drive time</small><strong>42 <small>min</small></strong></div><p><Check size={13} /> Travel &amp; fuel added to estimate</p></div></div>;
+}
+
+export function FieldPreview() {
+  const [points, setPoints] = useState<string[]>([]);
+  const [signed, setSigned] = useState(false);
+  const drawing = useRef(false);
+  return <div className="mf-phone"><div className="mf-phone-top"><span>9:41</span><span>● ▰</span></div><div className="mf-phone-app"><div className="mf-phone-heading"><span><Box size={15} /> MoveFlew Field</span><span className="mf-live"><i /> Online</span></div><small>TODAY’S MOVE</small><h4>Alex Morgan</h4><p><MapPin size={12} /> Lincoln Park → Evanston</p><div className="mf-field-done"><Check size={14} /> Move completed <span>12:04 PM</span></div><div className="mf-phone-doc"><span><FileText size={15} /> Bill of Lading</span><b>Customer signature</b><svg viewBox="0 0 240 75" className="mf-signature-pad" aria-label="Sample customer signature pad" onPointerDown={e => { if (signed) return; drawing.current = true; e.currentTarget.setPointerCapture(e.pointerId); const r = e.currentTarget.getBoundingClientRect(); setPoints(p => [...p, `M${(e.clientX-r.left)*240/r.width},${(e.clientY-r.top)*75/r.height}`]); }} onPointerMove={e => { if (!drawing.current || signed) return; const r = e.currentTarget.getBoundingClientRect(); setPoints(p => [...p, `L${(e.clientX-r.left)*240/r.width},${(e.clientY-r.top)*75/r.height}`]); }} onPointerUp={() => { drawing.current = false; }} onPointerCancel={() => { drawing.current = false; }}><path d={points.length ? points.join(" ") : "M30 48q15-50 20-21t18 13q12-36 13-4t25-13q-8 24 13 16t31-6q17-16 9 7t39-10M36 61q60-10 157-6"} /></svg><div className="mf-signature-meta"><small>{signed ? "Signature saved" : "Alex Morgan"}</small><Button variant="ghost" size="icon" aria-label="Clear sample signature" onClick={() => { setPoints([]); setSigned(false); }}><RotateCcw /></Button></div></div><Button className="mf-sign-document" onClick={() => setSigned(true)}>{signed ? <><CheckCheck /> BOL Signed</> : <><PenLine /> Complete &amp; sign</>}</Button><small className="mf-phone-bottom">{signed ? "Signed document ready" : "Photos & documents synced"}</small></div></div>;
+}
+
+export function SmallProductPreview({ kind }: { kind: "invoices" | "storage" | "proposals" }) {
+  if (kind === "invoices") return <div className="mf-mini-preview"><div className="mf-mini-header"><span><FileText size={15} /> Invoices</span><span className="mf-live"><i /> Up to date</span></div><div className="mf-invoice-total"><small>Total collected</small><strong>$12,450<span>.00</span></strong><span><ArrowUpRight size={13} /> This month</span></div><div className="mf-mini-row"><span>INV-0024 · Alex Morgan</span><b className="mf-status">Paid <Check size={11} /></b></div><div className="mf-mini-row"><span>INV-0023 · Sarah Chen</span><b className="mf-status">Paid <Check size={11} /></b></div></div>;
+  if (kind === "storage") return <div className="mf-mini-preview"><div className="mf-mini-header"><span><Box size={15} /> Storage inventory</span><span>Warehouse A</span></div><div className="mf-storage-grid">{Array.from({length: 12}, (_, i) => <span className={i === 2 || i === 7 || i === 10 ? "is-available" : ""} key={i}><Box size={18} /><small>A-{String(i+1).padStart(2, "0")}</small></span>)}</div><div className="mf-mini-row"><span>9 vaults occupied</span><span>3 available</span></div></div>;
+  return <div className="mf-mini-preview"><div className="mf-mini-header"><span><FileText size={15} /> Moving proposal</span><span>#EST-1042</span></div><div className="mf-proposal-client"><span className="mf-avatar">AM</span><div><b>Alex Morgan</b><small>2-bedroom residential move</small></div><CheckCheck size={17} /></div><div className="mf-mini-row"><span>Estimate total</span><strong>$1,280.00</strong></div><div className="mf-proposal-progress"><span><Check /> Sent</span><i /><span><Check /> Signed</span><i /><span><Check /> Deposit</span></div></div>;
+}

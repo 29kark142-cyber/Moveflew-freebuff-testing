@@ -1,0 +1,41 @@
+/* Keep workspace selection and the account footer visible as modules grow. */
+.ws-nav {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  flex: 1;
+  align-content: start;
+}
+.ws-nav__group {
+  padding: 16px 12px 6px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #8497aa;
+  line-height: 1.5;
+}
+.ws-nav__group:first-child {
+  padding-top: 6px;
+}
+.ws-nav button {
+  min-height: 36px;
+  height: auto;
+  align-items: center;
+  flex-shrink: 0;
+}
+.ws-nav button span {
+  white-space: normal;
+  line-height: 1.35;
+}
+.ws-sidebar .ws-account {
+  flex-shrink: 0;
+}
+.ws-topbar__crumb {
+  min-width: 0;
+}
+.ws-topbar__crumb strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

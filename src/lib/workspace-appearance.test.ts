@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+import { ACCENTS, PRESETS, appearanceKey, appearanceSchema, canSaveAppearance, DEFAULT_APPEARANCE, parseAppearance, validWallpaperScope } from "./workspace-appearance";
+
+describe("workspace appearance", () => {
+  it("offers all five requested presets", () => { expect(PRESETS.map(p => p.name)).toEqual(["Enterprise Light", "Midnight Fleet", "Emerald Driver", "Warm Bronze", "High Contrast"]); });
+  it("offers all eight requested accent options", () => { expect(ACCENTS.map(a => a.name)).toEqual(["Emerald", "Violet", "Ocean Blue", "Amber", "Crimson", "Cyan", "Rose", "Slate"]); });
+  it("rejects unsafe or credential-bearing wallpaper links", () => { for (const url of ["javascript:alert(1)", "http://example.com/image.jpg", "https://user:password@example.com/image.jpg"]) expect(appearanceSchema.safeParse({ ...DEFAULT_APPEARANCE, wallpaper: { kind: "url", value: url } }).success).toBe(false); expect(appearanceSchema.safeParse({ ...DEFAULT_APPEARANCE, wallpaper: { kind: "url", value: "https://example.com/image.jpg" } }).success).toBe(true); });
+  it("rejects wallpapers stored under another workspace", () => { const value = appearanceSchema.parse({ ...DEFAULT_APPEARANCE, wallpaper: { kind: "storage", value: "12/abc.webp" } }); expect(validWallpaperScope(value, 12)).toBe(true); expect(validWallpaperScope(value, 13)).toBe(false); });
+  it("allows manager saves only in writable workspaces", () => { expect(canSaveAppearance("admin", true)).toBe(true); expect(canSaveAppearance("office_admin", true)).toBe(true); for (const role of ["crew", "dispatcher", "estimator"]) expect(canSaveAppearance(role, true)).toBe(false); expect(canSaveAppearance("admin", false)).toBe(false); });
+  it("isolates local preferences by user and workspace", () => { expect(appearanceKey("alice", 1)).not.toBe(appearanceKey("bob", 1)); expect(appearanceKey("alice", 1)).not.toBe(appearanceKey("alice", 2)); expect(parseAppearance({ preset: "not-a-theme" })).toEqual(DEFAULT_APPEARANCE); });
+});

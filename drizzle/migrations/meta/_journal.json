@@ -1,0 +1,167 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793128470847,
+      "tag": "0000_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793129345500,
+      "tag": "0001_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793147145059,
+      "tag": "0002_crew_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793147653584,
+      "tag": "0003_workspace_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793148613980,
+      "tag": "0004_crew_onboarding_contact",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793187808379,
+      "tag": "0005_quotes_proposals_deposit_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793188175061,
+      "tag": "0006_protect_workspace_deposit_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793192978997,
+      "tag": "0007_workspace_travel_fuel_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793193161643,
+      "tag": "0008_website_integration_hub",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793194291476,
+      "tag": "0009_website_lead_source_tag",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793195035152,
+      "tag": "0010_deposit_livemode_booking",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793195654783,
+      "tag": "0011_deposit_settle_compat",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793204970193,
+      "tag": "0012_crew_sees_assigned_jobs_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793210524895,
+      "tag": "0013_tenant_signup_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793211142183,
+      "tag": "0014_platform_super_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793458701627,
+      "tag": "0015_plans_signed_in_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793509143167,
+      "tag": "0016_server_owned_invitation_roles_and_crew_roster",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793509713529,
+      "tag": "0017_internal_testing_intake_and_booking",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793509793200,
+      "tag": "0018_show_preview_proposal_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793510393022,
+      "tag": "0019_field_document_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793512445221,
+      "tag": "0020_workspace_appearance_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793588608583,
+      "tag": "0021_beta_feedback",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793715139956,
+      "tag": "0022_workspace_custom_pricing",
+      "breakpoints": true
+    }
+  ]
+}

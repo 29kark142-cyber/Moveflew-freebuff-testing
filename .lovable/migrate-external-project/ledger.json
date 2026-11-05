@@ -1,0 +1,121 @@
+[
+ {
+  "capability": "code: marketing pages (/, /platform, /pricing, /contact)",
+  "source": "client/src/pages",
+  "outcome": "migrate",
+  "status": "verified",
+  "next_action": "Done: pages render; contact form saves to Cloud"
+ },
+ {
+  "capability": "code: workspace CRM app (jobs, customers, estimates, dispatch, crew, workers, payroll, storage, billing, claims, tariffs, messaging, accounting, automation, engagement)",
+  "source": "client/src/pages/app, core, extended, workers; server/*",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Port module by module (~70k lines)"
+ },
+ {
+  "capability": "code: public token pages (proposal, quote, portal, review, claims, payment-method)",
+  "source": "client/src/pages",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Port as public routes with server-verified tokens"
+ },
+ {
+  "capability": "schema",
+  "source": "drizzle/schema.ts (MySQL, 24+ tables)",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Recreate in Lovable Cloud Postgres with RLS"
+ },
+ {
+  "capability": "records",
+  "source": "Manus MySQL",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Request per-table export after preview"
+ },
+ {
+  "capability": "auth identities",
+  "source": "Manus OAuth + Google + Twilio Verify + email",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Replace with Lovable Cloud auth; first-login email verification + password setup"
+ },
+ {
+  "capability": "authorization (companies, memberships, roles)",
+  "source": "server/access",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Recreate with role table + RLS"
+ },
+ {
+  "capability": "uploaded file bytes",
+  "source": "S3 / manus-storage",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Lovable Cloud storage; request file export"
+ },
+ {
+  "capability": "Stripe payments + webhook",
+  "source": "server/core-payments",
+  "outcome": "preserve",
+  "status": "pending",
+  "next_action": "Keep account; request STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET at verification"
+ },
+ {
+  "capability": "Twilio SMS",
+  "source": "server/messaging",
+  "outcome": "preserve",
+  "status": "pending",
+  "next_action": "Request TWILIO_* at verification"
+ },
+ {
+  "capability": "SendGrid email + webhook",
+  "source": "server/messaging",
+  "outcome": "preserve",
+  "status": "pending",
+  "next_action": "Request SENDGRID_* at verification"
+ },
+ {
+  "capability": "QuickBooks Online",
+  "source": "server/qbo",
+  "outcome": "preserve",
+  "status": "pending",
+  "next_action": "Port OAuth callback; request credentials"
+ },
+ {
+  "capability": "public endpoints / webhooks / callbacks",
+  "source": "/api/providers/*, /api/crm/engage, twilio/status",
+  "outcome": "preserve",
+  "status": "pending",
+  "next_action": "Recreate under /api/public with verification"
+ },
+ {
+  "capability": "schedules",
+  "source": "/api/scheduled/workspace",
+  "outcome": "preserve",
+  "status": "pending",
+  "next_action": "Recreate as cron-called server route"
+ },
+ {
+  "capability": "Manus platform vars (MANUS_*, OAUTH)",
+  "source": ".env.example",
+  "outcome": "replace",
+  "status": "pending",
+  "next_action": "Not requested; replaced by Lovable Cloud"
+ },
+ {
+  "capability": "cutover",
+  "source": "webhook URLs in Stripe/Twilio/SendGrid/QBO",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Update dashboard URLs after publish"
+ },
+ {
+  "capability": "verification",
+  "source": "-",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "Verify after each phase"
+ }
+]

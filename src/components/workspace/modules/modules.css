@@ -1,0 +1,24 @@
+.wm-page { min-width:0; --muted:var(--wa-fill); }
+.wm-page .ws-card { padding:20px; }
+.wm-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin:20px 0; }
+.wm-sample { border-left:3px solid var(--primary);background:var(--muted);color:var(--muted-foreground);padding:12px 16px;margin:16px 0;font-size:13px; }
+.wm-toolbar { display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:20px 0; }
+.wm-toolbar>.ws-input,.wm-toolbar>.ws-field { width:auto;max-width:100%;min-width:180px;flex:1; }
+.wm-search { display:flex;align-items:center;gap:8px;flex:1;min-width:180px; }
+.wm-breakdown { display:grid;grid-template-columns:140px minmax(40px,1fr) 110px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border); }
+.wm-page progress { accent-color:var(--primary);height:10px; }
+.wm-page progress::-webkit-progress-bar { background:var(--wa-fill);border-radius:5px; }
+.wm-page progress::-webkit-progress-value { background:var(--wa-accent);border-radius:5px; }
+.wm-unit-grid,.wm-planning { display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:20px 0; }
+.wm-document { max-width:840px;margin:24px auto;padding:36px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border); }
+.wm-document dt { color:var(--muted-foreground);font-size:12px; }
+.wm-signoff { max-width:840px;margin:auto; }
+.wm-signature-image { width:280px;max-width:100%;height:110px;object-fit:contain; }
+.wm-scanner { width:100%;max-width:700px;aspect-ratio:16/9;background:var(--muted);position:relative;overflow:hidden;border:1px solid var(--border);border-radius:8px; }
+.wm-scanner video { width:100%;height:100%;object-fit:cover; }
+.wm-camera-empty { position:absolute;inset:0;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;color:var(--muted-foreground); }
+.ws-sidebrand .movegrid-brand { display:flex;align-items:center;gap:9px;color:var(--foreground);font-size:22px;font-weight:700;text-decoration:none; }
+.ws-sidebrand .movegrid-symbol { width:32px;height:36px;flex-shrink:0; }
+.ws-sidebrand .movegrid-word-accent { color:var(--primary); }
+@media(max-width:600px) { .wm-unit-grid,.wm-planning { grid-template-columns:1fr; }.wm-document{padding:18px;}.wm-breakdown{grid-template-columns:95px minmax(20px,1fr) 85px;font-size:12px;}.wm-toolbar>.ws-input{width:100%;}.wm-metrics{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media print { .workspace .ws-sidebar,.workspace .ws-topbar,.wm-page .ws-page-head,.wm-toolbar,.wm-signoff,.wm-sample,.wm-page>button {display:none!important;}.workspace .ws-main {margin:0!important;}.wm-document {border:0;max-width:none;margin:0;padding:0;}body:has(.wm-document) [aria-label="CrewAI Assistant"]{display:none;} }

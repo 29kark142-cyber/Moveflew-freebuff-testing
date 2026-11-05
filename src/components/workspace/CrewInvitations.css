@@ -1,0 +1,177 @@
+.crew-invitations {
+  margin-bottom: 20px;
+}
+.crew-invitations__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: var(--blue);
+  margin-bottom: 19px;
+}
+.crew-invitations__head h2,
+.crew-invitations__head p,
+.crew-invitations__head .ws-eyebrow {
+  color: inherit;
+}
+.crew-invitations__head h2 {
+  color: var(--ink);
+  margin: 4px 0 6px;
+  font-size: 20px;
+}
+.crew-invitations__head p {
+  color: #708292;
+  font-size: 12px;
+  margin: 0;
+  max-width: 590px;
+}
+.crew-invitations__form {
+  display: grid;
+  grid-template-columns: minmax(145px, 0.8fr) repeat(2, minmax(130px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #deebf3;
+  border-radius: 9px;
+  background: #f8fbfd;
+}
+.crew-invitations__form label {
+  display: grid;
+  gap: 5px;
+  color: #5c7182;
+  font-size: 10px;
+  font-weight: 700;
+}
+.crew-invitations__form input,
+.crew-invitations__form select {
+  min-width: 0;
+  min-height: 37px;
+  border: 1px solid #d8e4ee;
+  background: #fff;
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.crew-invitations__kind {
+  display: flex;
+  gap: 5px;
+}
+.crew-invitations__kind button {
+  min-height: 37px;
+  padding: 7px 9px;
+  border: 1px solid #d7e5ee;
+  border-radius: 6px;
+  background: #fff;
+  color: #657e91;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.crew-invitations__kind button.selected {
+  background: #eaf5ff;
+  border-color: #9bcff3;
+  color: var(--blue);
+}
+.crew-invitations__candidate {
+  grid-column: 1 / -1;
+  color: #587084;
+  font-size: 11px;
+}
+.crew-invitations__candidate summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.crew-invitations__candidate label {
+  margin: 8px 0 4px;
+}
+.crew-invitations__candidate input {
+  width: 180px;
+}
+.crew-invitations__form .ws-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.crew-invitations__fresh {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #edf8f4;
+  color: #2c765e;
+}
+.crew-invitations__fresh label {
+  display: grid;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.crew-invitations__fresh input {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid #bee1d0;
+  border-radius: 5px;
+  color: #315b4b;
+  background: #fff;
+  font-size: 11px;
+}
+.crew-invitations__fresh .ws-row-actions {
+  margin-top: 9px;
+}
+.crew-invitations__fresh small {
+  display: block;
+  margin-top: 6px;
+}
+.crew-invitations__list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+.crew-invitations__list-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.crew-invitations__table td > small {
+  display: block;
+  color: #8293a1;
+  font-size: 10px;
+  margin-top: 2px;
+}
+.crew-invitations__delivery-error {
+  color: #b44a52 !important;
+  max-width: 170px;
+  overflow-wrap: anywhere;
+}
+.crew-invitations__privacy {
+  display: block;
+  color: #8494a1;
+  font-size: 10px;
+  margin-top: 14px;
+}
+@media (max-width: 980px) {
+  .crew-invitations__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .crew-invitations__form .ws-btn {
+    justify-self: start;
+  }
+}
+@media (max-width: 560px) {
+  .crew-invitations__form {
+    grid-template-columns: 1fr;
+  }
+  .crew-invitations__kind {
+    width: 100%;
+  }
+  .crew-invitations__kind button {
+    flex: 1;
+    justify-content: center;
+  }
+  .crew-invitations__candidate input {
+    width: 100%;
+  }
+  .crew-invitations__table {
+    min-width: 680px;
+  }
+}

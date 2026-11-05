@@ -1,0 +1,19 @@
+# MoveFlew
+
+> MoveFlew is a moving company CRM and dispatch platform with an offline-first mobile field app for crews. Free during beta.
+
+MoveFlew connects lead capture, automated route and fuel pricing, digital proposals with e-signatures and deposits, conflict-free crew and truck dispatch, and an offline-capable PWA for move-day work: photo inspections, signed bills of lading and PDF documents that sync when connectivity returns. It is built for owners and office teams of local and long-distance moving companies.
+
+## Pages
+
+- [Home](/): Product overview and free beta signup.
+- [Pricing](/pricing): Beta access details; paid pricing is announced later.
+- [SmartMoving alternative](/smartmoving-alternative): Feature comparison for growing moving companies.
+- [MoveFlew vs. SmartMoving](/vs-smartmoving): Side-by-side comparison.
+- [Sample proposal](/demo/proposal): Illustrative customer proposal page.
+- [Contact](/contact): How to reach the team.
+
+## Optional
+
+- [Privacy Policy](/privacy): How data is collected and protected.
+- [Terms of Service](/terms): Terms of using the platform.

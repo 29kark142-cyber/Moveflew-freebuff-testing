@@ -1,0 +1,81 @@
+/* Workspace-scoped semantic palette; public routes never inherit these variables. */
+.ws-appearance-root {
+ --wa-canvas:#F4F7FB; --wa-card:#FFFFFF; --wa-fill:#EDF2F7; --wa-text:#17263B; --wa-muted:#506077; --wa-border:#B4C1D1; --wa-contrast:#FFFFFF; --wa-shadow:0 2px 8px #17263B0A;
+ --wa-emerald:#047857; --wa-violet:#6D28D9; --wa-ocean:#0369A1; --wa-amber:#92400E; --wa-crimson:#B91C1C; --wa-cyan:#0E7490; --wa-rose:#BE185D; --wa-slate:#475569;
+ --wa-accent:var(--wa-emerald); --wa-on-accent:#FFFFFF; --wa-accent-soft:#D9EDE6; --wa-accent-ink:var(--wa-accent); --wa-danger:#B91C1C; --wa-warning:#92400E; --wa-overlay:#17263B55;
+ --background:var(--wa-canvas); --foreground:var(--wa-text); --card:var(--wa-card); --card-foreground:var(--wa-text); --popover:var(--wa-card); --popover-foreground:var(--wa-text); --primary:var(--wa-accent); --primary-foreground:var(--wa-on-accent); --secondary:var(--wa-fill); --secondary-foreground:var(--wa-text); --accent:var(--wa-fill); --accent-foreground:var(--wa-text); --muted:var(--wa-fill); --muted-foreground:var(--wa-muted); --border:var(--wa-border); --input:var(--wa-border); --ring:var(--wa-accent-ink);
+ --color-background:var(--wa-canvas); --color-foreground:var(--wa-text); --color-card:var(--wa-card); --color-card-foreground:var(--wa-text); --color-popover:var(--wa-card); --color-popover-foreground:var(--wa-text); --color-primary:var(--wa-accent); --color-primary-foreground:var(--wa-on-accent); --color-secondary:var(--wa-fill); --color-secondary-foreground:var(--wa-text); --color-accent:var(--wa-fill); --color-accent-foreground:var(--wa-text); --color-muted:var(--wa-fill); --color-muted-foreground:var(--wa-muted); --color-border:var(--wa-border); --color-input:var(--wa-border); --color-ring:var(--wa-accent-ink);
+ min-height:100vh; background:var(--wa-canvas); color:var(--wa-text);
+}
+.ws-appearance-root[data-preset=midnight], [data-preview-preset=midnight] { --wa-canvas:#101827; --wa-card:#1B2738; --wa-fill:#25344A; --wa-text:#F1F5F9; --wa-muted:#BDCADD; --wa-border:#697D98; }
+.ws-appearance-root[data-preset=driver], [data-preview-preset=driver] { --wa-canvas:#EDF5F1; --wa-card:#FFFFFF; --wa-fill:#E0EEE7; --wa-text:#15372C; --wa-muted:#456558; --wa-border:#9BB9A9; }
+.ws-appearance-root[data-preset=bronze], [data-preview-preset=bronze] { --wa-canvas:#F6F1EB; --wa-card:#FFFCF8; --wa-fill:#EEE3D7; --wa-text:#38291D; --wa-muted:#705A48; --wa-border:#BEA68F; }
+.ws-appearance-root[data-preset=contrast], [data-preview-preset=contrast] { --wa-canvas:#000000; --wa-card:#000000; --wa-fill:#191919; --wa-text:#FFFFFF; --wa-muted:#E3E3E3; --wa-border:#FFFFFF; }
+.ws-appearance-root[data-accent=violet] { --wa-accent:var(--wa-violet); }
+.ws-appearance-root[data-accent=ocean] { --wa-accent:var(--wa-ocean); }
+.ws-appearance-root[data-accent=amber] { --wa-accent:var(--wa-amber); }
+.ws-appearance-root[data-accent=crimson] { --wa-accent:var(--wa-crimson); }
+.ws-appearance-root[data-accent=cyan] { --wa-accent:var(--wa-cyan); }
+.ws-appearance-root[data-accent=rose] { --wa-accent:var(--wa-rose); }
+.ws-appearance-root[data-accent=slate] { --wa-accent:var(--wa-slate); }
+.ws-appearance-root[data-preset=midnight],.ws-appearance-root[data-preset=contrast] { --wa-accent-ink:color-mix(in srgb,var(--wa-accent) 25%,var(--wa-text)); --wa-danger:#FCA5A5; --wa-warning:#FDE68A; }
+.ws-appearance-root { --wa-accent-soft:color-mix(in srgb,var(--wa-accent) 12%,var(--wa-card)); --wa-glass:color-mix(in srgb,var(--wa-card) 94%,transparent); --wa-mask:color-mix(in srgb,var(--wa-canvas) 82%,transparent); }
+.ws-appearance-root[data-wallpaper=true] { position:relative; isolation:isolate; }
+.ws-appearance-root[data-wallpaper=true]::before { content:""; position:fixed; inset:0; background-image:var(--workspace-wallpaper); background-size:cover; background-position:center; z-index:-2; pointer-events:none; }
+.ws-appearance-root[data-wallpaper=true]::after { content:""; position:fixed; inset:0; background:var(--wa-mask); z-index:-1; pointer-events:none; }
+.ws-appearance-root .workspace { --blue:var(--wa-accent-ink); --cyan:var(--wa-accent-ink); --navy:var(--wa-text); --muted:var(--wa-muted); --line:var(--wa-border); --canvas:var(--wa-canvas); --danger:var(--wa-danger); --success:var(--wa-accent-ink); background:transparent; color:var(--wa-text); }
+.ws-appearance-root[data-wallpaper=true] .ws-main { background:var(--wa-glass); backdrop-filter:blur(12px); }
+.ws-appearance-root .ws-sidebar,.ws-appearance-root .ws-topbar { background:var(--wa-card); border-color:var(--wa-border); }
+.ws-appearance-root[data-wallpaper=true] .ws-sidebar,.ws-appearance-root[data-wallpaper=true] .ws-topbar { background:var(--wa-glass); backdrop-filter:blur(12px); }
+.ws-appearance-root :is(.ws-card,.ws-table-wrap,.ws-modal,.ws-workspace-menu,.ws-inventory-card,.ws-calendar-day,.ws-dispatch__left,.ws-dispatch__grid,.ws-signature,.ws-field-selector button,.ws-onboard) { background:var(--wa-card); color:var(--wa-text); border-color:var(--wa-border); }
+.ws-appearance-root :is(.ws-input,.ws-select,.ws-textarea,.language-switcher select) { background:var(--wa-card); color:var(--wa-text); border-color:var(--wa-border); }
+.ws-appearance-root :is(input,textarea)::placeholder { color:var(--wa-muted); opacity:1; }
+.ws-appearance-root :is(.ws-table th,.ws-material-options,.ws-invoice-summary>div,.ws-signature__top,.ws-calendar-day.is-outside-month,.ws-empty,.ws-quantity button,.ws-workspace-switcher>button) { background:var(--wa-fill); color:var(--wa-muted); border-color:var(--wa-border); }
+.ws-appearance-root :is(.ws-nav button,.ws-nav__group,.ws-field label,.ws-tabs button,.ws-topbar__user,.ws-topbar__crumb,.ws-stat__hint,.ws-icon-btn,.ws-modal-close,.ws-quote-lines>div,.ws-workflow li,.ws-dispatch__hour,.ws-field-selector button,.ws-calendar-day>b) { color:var(--wa-muted); }
+.ws-appearance-root :is(.ws-sidebrand,.ws-account,.ws-list-row,.ws-table td,.ws-dispatch__slot) { border-color:var(--wa-border); }
+.ws-appearance-root :is(.ws-btn,.ws-quantity button) { background:var(--wa-card); color:var(--wa-text); border-color:var(--wa-border); }
+.ws-appearance-root :is(.ws-btn.primary,.ws-btn.primary:hover) { background:var(--wa-accent); color:var(--wa-on-accent); border-color:var(--wa-accent); }
+.ws-appearance-root .ws-btn.danger { color:var(--wa-danger); }
+.ws-appearance-root :is(.ws-nav button.active,.ws-nav button:hover,.ws-workspace-menu button.active,.ws-workspace-menu button:hover,.ws-stat__icon,.ws-field-selector button.active,.ws-dispatch-job,.ws-workflow li.complete>span) { background:var(--wa-accent-soft); color:var(--wa-accent-ink); }
+.ws-appearance-root :is(.ws-dispatch-job b,.ws-dispatch-job small) { color:var(--wa-accent-ink); }
+.ws-appearance-root .ws-tabs button.active { color:var(--wa-accent-ink); border-color:var(--wa-accent-ink); }
+.ws-appearance-root :is(.ws-chip,.ws-chip.blue,.ws-chip.green) { background:var(--wa-accent-soft); color:var(--wa-accent-ink); }
+.ws-appearance-root .ws-chip.orange { background:var(--wa-fill); color:var(--wa-warning); }
+.ws-appearance-root .ws-chip.red { background:var(--wa-fill); color:var(--wa-danger); }
+.ws-appearance-root .ws-table tbody tr:hover { background:var(--wa-fill); }
+.ws-appearance-root :is(.ws-alert,.ws-error) { background:var(--wa-card); border-color:var(--wa-border); color:var(--wa-text); }
+.ws-appearance-root .ws-error { color:var(--wa-danger); }
+.ws-appearance-root .ws-avatar { background:var(--wa-accent); color:var(--wa-on-accent); }
+.ws-appearance-root .ws-quote-total { background:var(--wa-accent); color:var(--wa-on-accent); }
+.ws-appearance-root .ws-quote-total small { color:var(--wa-on-accent); }
+.ws-appearance-root .recharts-bar-rectangle path { fill:var(--wa-accent-ink); }
+.ws-appearance-root .recharts-cartesian-axis-tick text { fill:var(--wa-muted); }
+.ws-appearance-root .recharts-default-tooltip { background:var(--wa-card) !important; border-color:var(--wa-border) !important; color:var(--wa-text) !important; }
+.ws-appearance-root :is(button,input,select,textarea):focus-visible { outline:2px solid var(--wa-accent-ink); outline-offset:3px; }
+.ws-appearance-settings { max-width:1100px; }
+.ws-appearance-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:26px; }
+.ws-appearance-heading h2 { font-size:19px; margin:0 0 6px; }.ws-appearance-heading p { color:var(--wa-muted); font-size:12px; margin:0; }
+.ws-appearance-settings fieldset { border:0; border-top:1px solid var(--wa-border); padding:25px 0; margin:0; min-width:0; }
+.ws-appearance-settings legend { padding:0 14px 0 0; font-size:13px; font-weight:600; }
+.ws-preset-gallery { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; }
+.ws-preset-option { height:auto; flex-direction:column; gap:0; padding:0; min-width:0; white-space:normal; border:1px solid var(--wa-border); background:var(--wa-card); color:var(--wa-text); overflow:hidden; border-radius:8px; }
+.ws-preset-option[aria-pressed=true] { outline:2px solid var(--wa-accent-ink); outline-offset:3px; }
+.ws-preset-thumbnail { --wa-canvas:#F4F7FB; --wa-card:#FFFFFF; --wa-fill:#EDF2F7; --wa-text:#17263B; --wa-muted:#506077; --wa-border:#B4C1D1; display:flex; width:100%; height:100px; background:var(--wa-canvas); padding:10px; gap:6px; border-bottom:1px solid var(--wa-border); }
+.ws-preset-thumbnail[data-preview-preset=midnight] { --wa-canvas:#101827; --wa-card:#1B2738; --wa-fill:#25344A; --wa-border:#697D98; }
+.ws-preset-thumbnail[data-preview-preset=driver] { --wa-canvas:#EDF5F1; --wa-card:#FFFFFF; --wa-fill:#E0EEE7; --wa-border:#9BB9A9; }
+.ws-preset-thumbnail[data-preview-preset=bronze] { --wa-canvas:#F6F1EB; --wa-card:#FFFCF8; --wa-fill:#EEE3D7; --wa-border:#BEA68F; }
+.ws-preset-thumbnail[data-preview-preset=contrast] { --wa-canvas:#000000; --wa-card:#000000; --wa-fill:#191919; --wa-border:#FFFFFF; }
+.ws-preset-side { width:25%; background:var(--wa-card); border:1px solid var(--wa-border); padding:10px 5px; display:grid; align-content:start; gap:7px; }
+.ws-preset-side i { height:3px; background:var(--wa-border); }.ws-preset-side i:nth-child(2) { background:var(--wa-accent); }
+.ws-preset-content { display:grid; flex:1; gap:7px; min-width:0; }.ws-preset-top { height:6px; width:65%; background:var(--wa-border); }.ws-preset-metrics { display:flex; gap:4px; }.ws-preset-metrics i { flex:1; background:var(--wa-card); border:1px solid var(--wa-border); }.ws-preset-table { display:grid; padding:5px; gap:4px; background:var(--wa-card); border:1px solid var(--wa-border); }.ws-preset-table i { height:2px; background:var(--wa-border); }
+.ws-preset-label { display:flex; justify-content:space-between; align-items:center; gap:5px; padding:13px 10px; width:100%; font-size:11px; min-height:48px; text-align:left; }.ws-preset-label svg { flex-shrink:0; color:var(--wa-accent-ink); }
+.ws-accent-palette { display:flex; gap:16px; flex-wrap:wrap; }.ws-accent-option { flex-direction:column; height:auto; gap:10px; padding:7px; width:82px; }.ws-accent-option > span { display:grid; place-items:center; width:35px; height:35px; border-radius:50%; color:var(--wa-on-accent); background:var(--wa-emerald); }.ws-accent-option[aria-pressed=true] > span { outline:2px solid var(--wa-accent-ink); outline-offset:4px; }.ws-accent-option small { font-size:10px; color:var(--wa-text); }
+[data-swatch=violet] { background:var(--wa-violet) !important; }[data-swatch=ocean] { background:var(--wa-ocean) !important; }[data-swatch=amber] { background:var(--wa-amber) !important; }[data-swatch=crimson] { background:var(--wa-crimson) !important; }[data-swatch=cyan] { background:var(--wa-cyan) !important; }[data-swatch=rose] { background:var(--wa-rose) !important; }[data-swatch=slate] { background:var(--wa-slate) !important; }
+.ws-wallpaper-options { display:grid; gap:20px; }.ws-wallpaper-upload { display:flex; align-items:center; gap:15px; padding:18px; border:1px dashed var(--wa-border); border-radius:8px; background:var(--wa-card); }.ws-wallpaper-upload > svg { color:var(--wa-muted); }.ws-wallpaper-upload > div { display:grid; gap:7px; flex:1; }.ws-wallpaper-upload strong { font-size:12px; }.ws-wallpaper-upload small { font-size:11px; color:var(--wa-muted); }.ws-wallpaper-link { max-width:720px; }.ws-wallpaper-link label { display:block; font-size:12px; margin-bottom:8px; }.ws-wallpaper-link > div { display:flex; gap:10px; }.ws-wallpaper-link input { min-width:0; }.ws-wallpaper-remove { justify-self:start; color:var(--wa-danger); }.ws-appearance-notice { font-size:12px; color:var(--wa-accent-ink); }
+@media(max-width:1150px) { .ws-preset-gallery { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:600px) { .ws-preset-gallery { grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }.ws-appearance-heading { align-items:flex-start; flex-direction:column; }.ws-appearance-heading > button { width:100%; }.ws-accent-palette { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }.ws-accent-option { width:100%; }.ws-wallpaper-upload { flex-wrap:wrap; }.ws-wallpaper-upload > button { width:100%; }.ws-wallpaper-link > div { flex-wrap:wrap; }.ws-wallpaper-link button { width:100%; } }
+
+/* The CrewAI widget is portaled to <body> so page scroll and ancestor effects (the glass
+   shell behind a workspace wallpaper) cannot move it. It keeps the workspace accent tokens
+   through inheritance without painting a second full-height surface. */
+.ws-copilot-portal { display:contents; }

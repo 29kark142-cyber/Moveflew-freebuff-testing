@@ -1,0 +1,136 @@
+{
+  "quickTasks": [
+    {
+      "id": "quote",
+      "title": "Build & Send Quote",
+      "route": "/app/estimates/new",
+      "minimumRole": "Sales & Estimator",
+      "roles": [
+        "admin",
+        "office_admin",
+        "estimator",
+        "dispatcher"
+      ],
+      "note": "Sales staff can build and share a proposal link; automated sending needs configured office messaging and consent."
+    },
+    {
+      "id": "dispatch",
+      "title": "Daily Crew & Truck Dispatch",
+      "route": "/app/dispatch",
+      "minimumRole": "Dispatcher",
+      "roles": [
+        "admin",
+        "office_admin",
+        "dispatcher"
+      ],
+      "note": "Eligible driver, skill, availability, and acknowledged warnings are required."
+    },
+    {
+      "id": "field",
+      "title": "On-Site Job Sheet & Signatures",
+      "route": "/app/field",
+      "minimumRole": "Field Crew",
+      "roles": [
+        "admin",
+        "office_admin",
+        "dispatcher",
+        "crew"
+      ],
+      "note": "Field crew must have an active linked crew profile and assignment to the job."
+    },
+    {
+      "id": "storage",
+      "title": "Storage Vault Intake",
+      "route": "/app/storage",
+      "minimumRole": "Office Admin",
+      "roles": [
+        "admin",
+        "office_admin",
+        "dispatcher"
+      ],
+      "note": "Dispatchers can also perform physical intake under the current role rules. Billing remains finance-only."
+    },
+    {
+      "id": "storage-billing",
+      "title": "Monthly Storage Invoices",
+      "route": "/app/billing",
+      "minimumRole": "Admin / Office Admin",
+      "roles": [
+        "admin",
+        "office_admin"
+      ],
+      "note": "Generate invoices writes records, not customer charges; billing cycles are duplicate-protected."
+    }
+  ],
+  "fieldChecklist": [
+    {
+      "step": 1,
+      "en": "Open /app/field and select the active move.",
+      "ru": "Откройте /app/field и выберите активный переезд."
+    },
+    {
+      "step": 2,
+      "en": "Save Pre-Move Walkthrough and damage photos.",
+      "ru": "Сохраните осмотр до переезда и фотографии повреждений."
+    },
+    {
+      "step": 3,
+      "en": "Tap Clock In at job arrival.",
+      "ru": "По прибытии нажмите «Начать рабочее время» для задания."
+    },
+    {
+      "step": 4,
+      "en": "Save Post-Move Walkthrough, tap Clock Out, and verify calculated hours and invoice.",
+      "ru": "Сохраните осмотр после переезда, завершите рабочее время и проверьте рассчитанные часы и счет."
+    },
+    {
+      "step": 5,
+      "en": "Capture the customer signature and launch checkout.",
+      "ru": "Получите подпись клиента и откройте страницу оплаты."
+    }
+  ],
+  "terminologyKeys": [
+    "Overview",
+    "Leads",
+    "Sales pipeline",
+    "Estimates",
+    "Tariff engine",
+    "Communications",
+    "Jobs",
+    "Dispatch",
+    "Calendar",
+    "Warehouse scanner",
+    "Trip planning",
+    "Fleet & crew",
+    "Resource availability",
+    "Storage",
+    "Storage accounts",
+    "Inventory catalog",
+    "Field crew",
+    "Job documents",
+    "Move invoices",
+    "Billing & payments",
+    "Expenses",
+    "Payroll & tips",
+    "Claims",
+    "Merchant gateway",
+    "QuickBooks accounting",
+    "Claims & settlements",
+    "Reports",
+    "Marketing",
+    "Reviews",
+    "Integrations & API",
+    "Transactional messaging",
+    "Automations",
+    "Settings",
+    "Admin",
+    "Office admin",
+    "Sales & estimator",
+    "Dispatcher",
+    "Clock in",
+    "Clock out",
+    "Pre-move walkthrough",
+    "Post-move walkthrough"
+  ],
+  "originalContentSha256": "7efbaf2409599526e7bceea7e4df1c46ba5c4b482af05b6a6cc249405348a213"
+}

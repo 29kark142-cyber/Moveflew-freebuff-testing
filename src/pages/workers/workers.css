@@ -1,0 +1,238 @@
+.worker-directory,
+.worker-detail {
+  display: grid;
+  gap: 15px;
+  color: var(--navy, #061d31);
+}
+
+.worker-directory__head,
+.worker-detail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.worker-directory__head h2,
+.worker-detail__identity h1 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.2px;
+}
+
+.worker-directory__head p,
+.worker-detail__identity p,
+.worker-help {
+  margin: 4px 0 0;
+  color: var(--muted, #66758a);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.worker-period-picker {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.worker-period-picker .ws-field {
+  min-width: 144px;
+}
+
+.worker-period-picker .ws-field span {
+  color: #4a5d72;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.worker-period-picker__error {
+  flex-basis: 100%;
+  color: var(--danger, #d8304a);
+  font-size: 11px;
+}
+
+.worker-directory__metrics,
+.worker-detail__metrics {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.worker-metric {
+  padding: 12px;
+  border: 1px solid var(--line, #e4eaf2);
+  border-radius: 8px;
+  background: #fbfdff;
+  display: grid;
+  gap: 4px;
+}
+
+.worker-metric small {
+  color: var(--muted, #66758a);
+  font-size: 10px;
+}
+
+.worker-metric b {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.worker-directory__name {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  padding: 0;
+}
+
+.worker-directory__name:hover b,
+.worker-detail__back:hover {
+  color: var(--blue, #0877eb);
+}
+
+.worker-directory__name b {
+  color: var(--navy, #061d31);
+  font-size: 12px;
+}
+
+.worker-directory__name small,
+.worker-table-subline {
+  color: var(--muted, #66758a);
+  font-size: 11px;
+}
+
+.worker-directory__row {
+  cursor: pointer;
+}
+
+.worker-directory__row:focus-within {
+  background: #edf6ff;
+}
+
+.worker-detail__back {
+  border: 0;
+  background: transparent;
+  color: #526276;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.worker-detail__identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.worker-detail__contact {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.worker-detail__overview {
+  display: grid;
+  grid-template-columns: 1.2fr minmax(210px, 0.8fr);
+  gap: 15px;
+}
+
+.worker-detail__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.worker-detail__fact {
+  display: grid;
+  gap: 3px;
+}
+
+.worker-detail__fact small {
+  color: var(--muted, #66758a);
+  font-size: 10px;
+}
+
+.worker-detail__fact span {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.worker-paid-badge {
+  display: inline-flex;
+  width: max-content;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #e8f7f0;
+  color: #147a52;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.worker-unpaid-badge {
+  display: inline-flex;
+  width: max-content;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #edf3fa;
+  color: #516174;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.worker-compensation-note {
+  color: #66758a;
+  background: #f8fbfe;
+  border: 1px solid #dbe7f3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.worker-history-note {
+  margin: 12px 0 0;
+  color: #765619;
+  background: #fff8e8;
+  border: 1px solid #f3daa3;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.worker-text-link {
+  min-width: auto;
+}
+
+.worker-text-link[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (max-width: 720px) {
+  .worker-directory__head,
+  .worker-detail__head {
+    display: grid;
+  }
+
+  .worker-detail__overview {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .worker-detail__facts {
+    grid-template-columns: 1fr;
+  }
+
+  .worker-period-picker .ws-field {
+    flex: 1 1 100%;
+  }
+}

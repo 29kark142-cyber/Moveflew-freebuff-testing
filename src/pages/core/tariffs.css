@@ -1,0 +1,179 @@
+.tariffs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.tariffs-job-selector {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.tariffs-job-selector label {
+  margin: 0;
+  width: min(190px, 100%);
+}
+.tariffs-job-selector .core-muted {
+  flex: 1 1 300px;
+  margin: 0 0 9px;
+}
+.tariffs-job-summary {
+  margin-top: 14px;
+  border: 1px solid #d9e8f5;
+  background: #f7fbff;
+  border-radius: 9px;
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  font-size: 13px;
+  color: #436279;
+}
+.tariffs-job-summary strong {
+  color: #102b43;
+}
+.tariffs-job-summary b {
+  color: #a03d2b;
+}
+.tariffs-profile-grid {
+  align-items: start;
+}
+.tariffs-profile-list {
+  display: grid;
+  gap: 9px;
+  max-height: 330px;
+  overflow: auto;
+}
+.tariffs-profile {
+  text-align: left;
+  display: grid;
+  gap: 3px;
+  width: 100%;
+}
+.tariffs-profile.is-selected {
+  background: #edf7ff !important;
+  border-color: #0877eb !important;
+  box-shadow: inset 3px 0 0 #0877eb;
+}
+.tariffs-profile span,
+.tariffs-profile small {
+  color: #60798f;
+  font-weight: 400;
+}
+.tariffs-profile small {
+  font-size: 11px;
+}
+.tariffs-provider-state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.tariffs-caption {
+  margin: -5px 0 15px;
+}
+.tariffs-input-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(145px, 1fr));
+  gap: 0 12px;
+}
+.tariffs-input-grid label {
+  margin-bottom: 12px;
+}
+.tariffs-revision {
+  border: 1px solid #f2d6ce;
+  background: #fff7f4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #81503f !important;
+}
+.tariffs-effective {
+  margin: 14px 0 0;
+}
+.tariffs-preview-actions,
+.tariffs-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.tariffs-preview-actions .core-muted {
+  font-size: 12px;
+}
+.tariffs-quote,
+.tariffs-snapshot {
+  margin-top: 18px;
+  border: 1px solid #d9e8f5;
+  border-radius: 11px;
+  padding: 16px;
+  background: #fbfdff;
+}
+.tariffs-snapshot {
+  border-color: #d6e9de;
+  background: #fafffc;
+}
+.tariffs-quote__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+.tariffs-quote__head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tariffs-quote__head span {
+  color: #647c91;
+  font-size: 12px;
+}
+.tariffs-quote__head > strong {
+  white-space: nowrap;
+  color: #0877eb;
+  font-size: 18px;
+}
+.tariffs-snapshot .tariffs-quote__head > strong {
+  color: #226447;
+}
+.tariffs-lines td:last-child,
+.tariffs-lines th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.tariffs-editor-actions {
+  margin: 14px 0 12px;
+}
+.tariffs-json-label textarea {
+  min-height: 390px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (max-width: 980px) {
+  .tariffs-input-grid {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+  }
+}
+@media (max-width: 680px) {
+  .tariffs-input-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tariffs-job-selector {
+    align-items: stretch;
+  }
+  .tariffs-job-selector label {
+    width: 100%;
+  }
+}
+@media (max-width: 460px) {
+  .tariffs-input-grid {
+    grid-template-columns: 1fr;
+  }
+  .tariffs-quote__head {
+    flex-direction: column;
+    gap: 5px;
+  }
+}

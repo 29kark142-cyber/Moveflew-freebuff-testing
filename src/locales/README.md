@@ -1,0 +1,9 @@
+# English and Russian interface copy
+
+English is the source language. Components subscribe with `useI18n()` and render fixed interface copy using `t("English source text")`. Russian values are stored in `ru.json`; keys normalize surrounding and repeated whitespace. Missing keys fall back to English. Interpolate changing values with named placeholders, for example `t("Order {id}", { id: job.id })`. Keep the same placeholders in both languages. Use `moverCount()` for English/Russian mover plurals and `getLocale()` for localized date/number formatting. The shared `money()` formatter keeps prices in USD.
+
+Do not translate stored customer names, company names, addresses, emails, notes, user-defined line items, API status codes or option values. Translate only their fixed interface labels. Canonical household-item labels may be localized at the display boundary; store their original keys and quantity/volume/weight values. Subscribe in each localized component so changing language updates visible copy without remounting the screen or losing form state.
+
+The selection is stored as `northwest-crew-language` in localStorage, shared between public/private pages, and synchronized across tabs. Without an explicit saved selection, the default is English. The controlled language selector is keyboard accessible and displays both native language names.
+
+`node scripts/extract-locale-keys.mjs --seed` extracts UI copy and known backend failures for catalog maintenance. `--seed` includes source metadata; review unused technical keys before adding new copy. `scripts/translate-locale.py` is an optional build-time catalog utility, not a production feature. It requires a currently supported model from the live proxy catalog, uses only static interface strings, validates exact key and placeholder coverage, and preserves existing translations. Never pass customer records to that utility.
