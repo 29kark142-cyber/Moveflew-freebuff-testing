@@ -3,6 +3,7 @@
 // or internal notes are ever returned from here.
 import {
   jobReference,
+  trackingInventory,
   TRACKING_TOKEN_RE,
   type PublicTrackingPayload,
   type TrackingTimeline,
@@ -90,6 +91,7 @@ export async function readTracking(token: string): Promise<PublicTrackingPayload
     null;
 
   const name = String(company?.name ?? "").trim() || "Your moving company";
+  const timeline = sanitizeTimeline(data["timeline"]);
 
   return {
     reference: jobReference(jobId),
@@ -106,7 +108,14 @@ export async function readTracking(token: string): Promise<PublicTrackingPayload
     distanceMiles: Number(data["distanceMiles"] ?? 0),
     origin: String(data["origin"] ?? ""),
     destination: String(data["destination"] ?? ""),
-    timeline: sanitizeTimeline(data["timeline"]),
+    timeline,
+    // Only names and quantities leave the server; item notes and prices stay private.
+    inventory: trackingInventory(
+      timeline,
+      Array.isArray(data["inventory"])
+        ? (data["inventory"] as { name?: unknown; quantity?: unknown; status?: unknown }[])
+        : [],
+    ),
     foreman: foreman
       ? {
           name: foreman.name || "Crew foreman",

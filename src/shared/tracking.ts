@@ -59,7 +59,19 @@ export type PublicTrackingPayload = {
   destination: string;
   timeline: TrackingTimeline;
   foreman: { name: string; phone: string; role: string; initials: string } | null;
+  /** Shipment checklist; status is derived from the crew's own timeline. */
+  inventory: TrackingItem[];
   updatedAt: string;
+};
+
+export type TrackingItemStatus = "loaded" | "in_transit" | "unloaded";
+
+export type TrackingItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  /** null until the crew starts the move, so nothing is claimed as loaded early. */
+  status: TrackingItemStatus | null;
 };
 
 /** index === -1 means the crew has not started the move yet. */
@@ -107,6 +119,36 @@ export function routeProgress(
   }
   if (stage.index === 3) return 0.88;
   return 1;
+}
+
+/** Shipment status for the whole load, derived from the recorded field timeline. */
+export function trackingItemStatus(
+  timeline: TrackingTimeline | null | undefined,
+): TrackingItemStatus | null {
+  const stage = trackingStage(timeline);
+  if (stage.index < 0) return null;
+  if (stage.index >= 3) return "unloaded";
+  if (stage.index >= 2) return "in_transit";
+  return "loaded";
+}
+
+/**
+ * Public checklist rows. A per-item status recorded on the job wins; otherwise the
+ * item follows the same stage the customer sees on the progress stepper.
+ */
+export function trackingInventory(
+  timeline: TrackingTimeline | null | undefined,
+  items: { name?: unknown; quantity?: unknown; status?: unknown }[],
+): TrackingItem[] {
+  const derived = trackingItemStatus(timeline);
+  const valid = (value: unknown): value is TrackingItemStatus =>
+    value === "loaded" || value === "in_transit" || value === "unloaded";
+  return items.slice(0, 40).map((item, index) => ({
+    id: `item-${index}`,
+    name: String(item.name ?? "").trim().slice(0, 80) || `Item ${index + 1}`,
+    quantity: Math.max(1, Math.round(Number(item.quantity) || 1)),
+    status: valid(item.status) ? item.status : derived,
+  }));
 }
 
 export type ArrivalBasis = "completed" | "scheduled" | "travel" | "unknown";

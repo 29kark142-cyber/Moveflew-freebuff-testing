@@ -38,6 +38,27 @@ async function replayField(scope: FieldScope) {
     }
   }
 }
+export type FieldQueueSummary = { total: number; photos: number; signatures: number };
+/** Counts what is still waiting on the phone so the field banner can name it. */
+export function queueSummary(operations: FieldOperation[]): FieldQueueSummary {
+  const photos = operations.filter(op => op.action === 'photos').length;
+  const signatures = operations.filter(op => op.action === 'signoff' || op.action === 'pre-move' || op.action === 'documents').length;
+  return { total: operations.length, photos, signatures };
+}
+/** Banner copy: work captured offline is never dropped silently. */
+export function queueSyncLabel(summary: FieldQueueSummary, online: boolean): string {
+  if (!summary.total) return online ? '' : 'Offline — showing saved jobs and photos';
+  const items = `${summary.total} item${summary.total === 1 ? '' : 's'}`;
+  return online ? `Syncing ${items}…` : `Syncing ${items} when back online`;
+}
+export function queueDetail(summary: FieldQueueSummary): string {
+  const parts: string[] = [];
+  if (summary.photos) parts.push(`${summary.photos} damage photo${summary.photos === 1 ? '' : 's'}`);
+  if (summary.signatures) parts.push(`${summary.signatures} signature${summary.signatures === 1 ? '' : 's'}`);
+  const other = summary.total - summary.photos - summary.signatures;
+  if (other > 0) parts.push(`${other} stage update${other === 1 ? '' : 's'}`);
+  return parts.join(' · ');
+}
 export async function syncField(scope:FieldScope) {
   if(navigator.locks)return navigator.locks.request(`moveflew-field-sync:${scopeKey(scope)}`,()=>replayField(scope));
   return replayField(scope);

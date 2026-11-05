@@ -12,7 +12,8 @@ import type { TipRecord } from "@shared/tipping";
 import SignaturePad from "@/components/workspace/SignaturePad";
 import { FIELD_PHASES, type FieldPhase, type FieldStatus, type FinalBill, type Timeline } from "@shared/field";
 import { fieldStatus,finalBill,billableHours } from '@shared/field';
-import { cacheField,readField,queuedField,enqueueField,syncField,type FieldScope,type FieldOperation } from '@/lib/field-offline';
+import { cacheField,readField,queuedField,enqueueField,syncField,queueSummary,queueSyncLabel,queueDetail,type FieldQueueSummary,type FieldScope,type FieldOperation } from '@/lib/field-offline';
+import JobInvoicePdfButton from './JobInvoicePdfButton';
 import FieldDocuments from './FieldDocuments';
 import { DemoJobButton, ClearDemoButton, isDemoJob } from './BetaTools';
 import type { FieldDocument,FieldDocuments as Documents } from '@/shared/field-documents';
@@ -56,7 +57,8 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
     return Number.isInteger(value) && value > 0 ? value : null;
   });
   const [offline, setOffline] = useState(false);
-  const [pending, setPending] = useState(0);
+  const [queueState, setQueueState] = useState<FieldQueueSummary>({ total: 0, photos: 0, signatures: 0 });
+  const pending = queueState.total;
   const [syncError,setSyncError]=useState('');
   const [officeEmail,setOfficeEmail]=useState('');
   const [reviewUrl,setReviewUrl]=useState('');
@@ -77,11 +79,11 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
   const flush = useCallback(async () => {
     const currentScope={userId,workspaceId};
     const q = await queuedField(currentScope);
-    setPending(q.length);
+    setQueueState(queueSummary(q));
     if (!q.length || !navigator.onLine) return;
     await syncField(currentScope);
     const rest=await queuedField(currentScope);
-    setPending(rest.length);
+    setQueueState(queueSummary(rest));
     setSyncError(rest.find(x=>x.error)?.error || '');
     if (rest.length < q.length) { toast.success("Offline updates synced"); void load(); }
   }, [load,userId,workspaceId]);
@@ -116,10 +118,25 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-4 pb-24">
-      {(offline || pending>0) && <div role="status" className="space-y-2 rounded-md border border-border bg-muted p-3 text-sm text-foreground"><p><WifiOff className="mr-2 inline h-4 w-4"/>{offline?'Offline. ':''}{pending} saved update(s) pending.</p>{syncError && <p className="text-destructive">{syncError}</p>}<Button variant="outline" size="sm" onClick={()=>void flush()}><RefreshCw/>Retry sync</Button></div>}
+      {/* Subtle top banner: offline captures are queued in IndexedDB, never dropped. */}
+      {(offline || pending > 0) && (
+        <div role="status" aria-live="polite" className="sticky top-0 z-10 flex items-start gap-2 rounded-lg border border-border bg-muted/90 px-3 py-2 text-xs backdrop-blur">
+          <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="font-medium text-foreground">{queueSyncLabel(queueState, !offline)}</p>
+            {queueDetail(queueState) ? <p className="text-muted-foreground">{queueDetail(queueState)}</p> : null}
+            {syncError ? <p className="text-destructive">{syncError}</p> : null}
+          </div>
+          {pending > 0 && (
+            <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => void flush()}>
+              <RefreshCw className="h-3.5 w-3.5" />Retry
+            </Button>
+          )}
+        </div>
+      )}
       {open ? (
         <JobSheet key={open.id} job={open} me={me} role={role} scope={scope} onBack={() => openJob(null)} onChange={replace}
-          queue={async(jobId,action,body)=>{await enqueueField(scope,jobId,action,body);setPending((await queuedField(scope)).length);setOffline(!navigator.onLine);}} />
+          queue={async(jobId,action,body)=>{await enqueueField(scope,jobId,action,body);setQueueState(queueSummary(await queuedField(scope)));setOffline(!navigator.onLine);}} />
       ) : (
         <>
           <header className="flex items-end justify-between gap-3">
@@ -316,6 +333,8 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
             ))}
             <div className="flex justify-between border-t border-border pt-2 text-lg font-bold text-foreground"><dt>Balance due</dt><dd className="tabular-nums">{money(job.bill.due)}</dd></div>
           </dl>
+
+          <JobInvoicePdfButton job={job} className="w-full" />
 
           {job.completedSignature ? (
             <div><p className="text-sm text-muted-foreground">Customer signed off</p><img src={job.completedSignature} alt="Customer signature" className="h-24 rounded-lg border border-border bg-background" /></div>

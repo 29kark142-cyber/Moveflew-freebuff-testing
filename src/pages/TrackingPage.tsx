@@ -1,25 +1,42 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   CircleAlert,
   Clock,
   MapPin,
   MessageSquare,
+  PackageCheck,
+  PackageOpen,
   Phone,
   RefreshCw,
   Truck,
 } from "lucide-react";
 import RouteMap from "@/components/tracking/RouteMap";
 import { readTracking } from "@/lib/tracking-api";
+import { DEMO_TRACKING_TOKEN, demoTrackingPayload } from "@/lib/tracking-demo";
 import {
   estimateArrival,
   routeProgress,
+  trackingItemStatus,
   trackingStage,
   TRACKING_STAGES,
   type PublicTrackingPayload,
+  type TrackingItemStatus,
 } from "@shared/tracking";
 
 const REFRESH_MS = 20_000;
+
+const ITEM_FILTERS: { key: TrackingItemStatus; label: string; icon: typeof Truck }[] = [
+  { key: "loaded", label: "Loaded", icon: PackageCheck },
+  { key: "in_transit", label: "In-Transit", icon: Truck },
+  { key: "unloaded", label: "Unloaded", icon: PackageOpen },
+];
+
+const ITEM_TONE: Record<TrackingItemStatus, string> = {
+  loaded: "border-blue-200 bg-blue-50 text-blue-700",
+  in_transit: "border-amber-200 bg-amber-50 text-amber-800",
+  unloaded: "border-emerald-200 bg-emerald-50 text-emerald-700",
+};
 
 const formatTime = (iso: string | null): string => {
   if (!iso) return "—";
@@ -51,15 +68,40 @@ const sinceLabel = (ms: number): string => {
   return `${Math.round(seconds / 60)}m ago`;
 };
 
+/** mm:ss (or h:mm:ss) remaining until the estimated arrival. */
+const countdownLabel = (at: string | null, now: number): string | null => {
+  if (!at) return null;
+  const remaining = Date.parse(at) - now;
+  if (!Number.isFinite(remaining) || remaining <= 0) return null;
+  const total = Math.floor(remaining / 1000);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+};
+
 export default function TrackingPage({ token }: { token: string }) {
+  const demo = token === DEMO_TRACKING_TOKEN;
   const [payload, setPayload] = useState<PublicTrackingPayload | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(() => Date.now());
   const [refreshedAt, setRefreshedAt] = useState(() => Date.now());
+  // Ticks every second so the route bar and the arrival countdown move smoothly.
+  const [tick, setTick] = useState(() => Date.now());
+  const [filter, setFilter] = useState<TrackingItemStatus>("loaded");
+  const filterInitialised = useRef(false);
 
   const load = useCallback(async () => {
+    if (demo) {
+      setPayload(demoTrackingPayload());
+      setMissing(false);
+      setError("");
+      setRefreshedAt(Date.now());
+      setLoading(false);
+      return;
+    }
     try {
       const result = await readTracking(token);
       if (!result.found) {
@@ -77,7 +119,7 @@ export default function TrackingPage({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [demo, token]);
 
   useEffect(() => {
     void load();
@@ -99,12 +141,12 @@ export default function TrackingPage({ token }: { token: string }) {
   }, [load]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    const timer = window.setInterval(() => setTick(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
   const stage = useMemo(() => trackingStage(payload?.timeline), [payload]);
-  const progress = payload ? routeProgress(payload.timeline, now, payload.travelMinutes) : 0;
+  const progress = payload ? routeProgress(payload.timeline, tick, payload.travelMinutes) : 0;
   const eta = payload
     ? estimateArrival(
         {
@@ -114,9 +156,23 @@ export default function TrackingPage({ token }: { token: string }) {
           travelMinutes: payload.travelMinutes,
         },
         payload.timeline,
-        now,
+        tick,
       )
     : null;
+
+  const inventory = useMemo(() => payload?.inventory ?? [], [payload]);
+  const counts = useMemo(() => {
+    const base: Record<TrackingItemStatus, number> = { loaded: 0, in_transit: 0, unloaded: 0 };
+    for (const item of inventory) if (item.status) base[item.status] += 1;
+    return base;
+  }, [inventory]);
+
+  // Open on the category that matches the crew's current stage, once.
+  useEffect(() => {
+    if (!payload || filterInitialised.current) return;
+    filterInitialised.current = true;
+    setFilter(trackingItemStatus(payload.timeline) ?? "loaded");
+  }, [payload]);
 
   if (loading) {
     return (
@@ -145,17 +201,24 @@ export default function TrackingPage({ token }: { token: string }) {
     );
   }
 
-  const contactPhone = (payload.foreman?.phone || payload.company.phone || "").replace(
+  const driverPhone = (payload.foreman?.phone || payload.company.phone || "").replace(
     /[^\d+]/g,
     "",
   );
-  const primaryPhone = contactPhone || "";
+  const dispatchPhone = (payload.company.phone || payload.foreman?.phone || "").replace(
+    /[^\d+]/g,
+    "",
+  );
   const foremanRole =
     payload.foreman?.role === "crew_lead"
       ? "Crew foreman"
       : payload.foreman?.role === "driver"
         ? "Driver"
         : "Crew";
+  const countdown = countdownLabel(eta?.at ?? null, tick);
+  const shownItems = inventory.filter((item) => item.status === filter);
+  const itemStatusStarted = inventory.some((item) => item.status !== null);
+  const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -175,6 +238,16 @@ export default function TrackingPage({ token }: { token: string }) {
       </header>
 
       <main className="mx-auto max-w-2xl space-y-4 px-4 py-5 pb-28">
+        {demo && (
+          <p
+            className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+            role="status"
+          >
+            <b>Sample preview.</b> This is illustrative demo data for the tracking screen — no
+            customer record, address or crew phone number is shown.
+          </p>
+        )}
+
         {/* Move summary + foreman */}
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -284,7 +357,7 @@ export default function TrackingPage({ token }: { token: string }) {
           </p>
         </section>
 
-        {/* Map + ETA */}
+        {/* Map + animated route progress + ETA countdown */}
         <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -301,12 +374,36 @@ export default function TrackingPage({ token }: { token: string }) {
             destinationLabel={payload.destination || "delivery"}
           />
 
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <span>Pickup</span>
+              <span className="tabular-nums text-slate-700">{percent}% of route</span>
+              <span>Delivery</span>
+            </div>
+            <div
+              className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+              aria-label="Route progress"
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-sky-400 transition-[width] duration-1000 ease-out"
+                style={{ width: `${Math.max(2, percent)}%` }}
+              />
+            </div>
+          </div>
+
           <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-900 p-3 text-white">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
                 {eta?.label ?? "Estimated arrival"}
               </p>
               <p className="text-lg font-bold">{formatTime(eta?.at ?? null)}</p>
+              {countdown && (
+                <p className="mt-0.5 text-xs tabular-nums text-sky-300">In {countdown}</p>
+              )}
             </div>
             <div className="text-right">
               {eta?.basis === "completed" ? (
@@ -332,39 +429,125 @@ export default function TrackingPage({ token }: { token: string }) {
           </p>
         </section>
 
+        {/* Interactive shipment checklist */}
+        <section
+          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          aria-label="Shipment checklist"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Your belongings</h2>
+            <span className="text-xs text-slate-500">
+              {inventory.length} item{inventory.length === 1 ? "" : "s"} on the shipment
+            </span>
+          </div>
+
+          <div
+            className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1"
+            role="tablist"
+            aria-label="Filter items by status"
+          >
+            {ITEM_FILTERS.map(({ key, label, icon: Icon }) => {
+              const selected = filter === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setFilter(key)}
+                  className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                    selected
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-1">
+                    <Icon className="h-3.5 w-3.5" /> {label}
+                  </span>
+                  <span className="tabular-nums text-[11px] text-slate-500">{counts[key]}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {inventory.length === 0 ? (
+            <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">
+              Your moving company hasn't added an inventory list to this move yet.
+            </p>
+          ) : !itemStatusStarted ? (
+            <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">
+              Loading hasn't started yet, so nothing is marked as loaded. Statuses update as your
+              crew works through the move.
+            </p>
+          ) : shownItems.length === 0 ? (
+            <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">
+              No items are {ITEM_FILTERS.find((entry) => entry.key === filter)?.label.toLowerCase()}{" "}
+              right now. Pick another category to see the rest of your shipment.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-slate-100">
+              {shownItems.map((item) => {
+                const status = item.status as TrackingItemStatus;
+                return (
+                  <li key={item.id} className="flex items-center justify-between gap-3 py-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-slate-300" />
+                      <span className="truncate text-sm text-slate-700">{item.name}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs tabular-nums text-slate-500">×{item.quantity}</span>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ITEM_TONE[status]}`}
+                      >
+                        {ITEM_FILTERS.find((entry) => entry.key === status)?.label}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <p className="mt-3 text-[11px] text-slate-500">
+            Item status follows your crew's last move update. Tap a category above to filter the
+            list.
+          </p>
+        </section>
+
         <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
           <Clock className="h-3.5 w-3.5" /> Refreshes every 20 seconds · updated{" "}
-          {sinceLabel(now - refreshedAt)}
+          {sinceLabel(tick - refreshedAt)}
         </p>
       </main>
 
-      {/* Emergency contact quick actions */}
+      {/* Quick actions: call the driver directly, or message the dispatch office */}
       <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
         <div className="mx-auto grid max-w-2xl grid-cols-2 gap-2">
           <a
-            href={primaryPhone ? `tel:${primaryPhone}` : undefined}
-            aria-disabled={!primaryPhone}
+            href={driverPhone ? `tel:${driverPhone}` : undefined}
+            aria-disabled={!driverPhone}
             className={`flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white ${
-              primaryPhone ? "active:scale-[.99]" : "pointer-events-none opacity-40"
+              driverPhone ? "active:scale-[.99]" : "pointer-events-none opacity-40"
             }`}
           >
-            <Phone className="h-4 w-4" /> Contact Crew Foreman
+            <Phone className="h-4 w-4" /> Call Driver
           </a>
           <a
-            href={primaryPhone ? `sms:${primaryPhone}` : undefined}
-            aria-disabled={!primaryPhone}
+            href={dispatchPhone ? `sms:${dispatchPhone}` : undefined}
+            aria-disabled={!dispatchPhone}
             className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-3 text-sm font-semibold text-slate-800 ${
-              primaryPhone ? "active:scale-[.99]" : "pointer-events-none opacity-40"
+              dispatchPhone ? "active:scale-[.99]" : "pointer-events-none opacity-40"
             }`}
           >
-            <MessageSquare className="h-4 w-4" /> Text the crew
+            <MessageSquare className="h-4 w-4" /> Message Dispatch
           </a>
         </div>
-        {!primaryPhone && (
-          <p className="mt-2 text-center text-[11px] text-slate-500">
-            No crew phone number is on file yet. Call {payload.company.name} for an update.
-          </p>
-        )}
+        <p className="mt-2 text-center text-[11px] text-slate-500">
+          {driverPhone
+            ? `${payload.foreman?.name || "Your driver"} · ${foremanRole.toLowerCase()}`
+            : "No driver phone number is on file yet."}
+          {" · "}Dispatch {payload.company.phone || "not configured"}
+        </p>
       </div>
     </div>
   );

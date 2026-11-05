@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, Loader2, Plus, Trash2, Warehouse, X } from "lucide-react";
+import { CalendarClock, Loader2, Plus, ScanLine, Trash2, Warehouse, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CameraScanner from "@/components/workspace/CameraScanner";
 import { crmFetch } from "@/lib/crm";
 import { money } from "@shared/crm";
 import {
   BILLING_MODES,
   dueForRelease,
+  findVaultByTag,
   isBillingMode,
   isVaultStatus,
   monthlyStorageCents,
@@ -57,6 +59,12 @@ export default function StorageVaultPage({ role }: { role: string }) {
   const [itemName, setItemName] = useState("");
   const [itemQty, setItemQty] = useState("1");
   const [itemCuft, setItemCuft] = useState("5");
+  // Camera tag scanning: open the scanned vault, or add the scanned tag as inventory.
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<"vault" | "item">("vault");
+  const [lastTag, setLastTag] = useState("");
+  const [focusItem, setFocusItem] = useState(0);
+  const itemInput = useRef<HTMLInputElement>(null);
 
   const allowed = OFFICE.includes(role);
 
@@ -169,6 +177,46 @@ export default function StorageVaultPage({ role }: { role: string }) {
     setItemCuft("5");
   };
 
+  const applyScan = useCallback(
+    (raw: string) => {
+      const tag = raw.trim();
+      setScanOpen(false);
+      if (!tag) return;
+      setLastTag(tag);
+      if (scanMode === "item" && edit) {
+        // Assign the scanned tag straight to the vault that is open.
+        change({
+          items: [
+            ...(edit.items ?? []),
+            {
+              name: tag.slice(0, 80),
+              quantity: 1,
+              cuft: Math.max(0, Number(itemCuft) || 0),
+            },
+          ],
+        });
+        setItemName(tag.slice(0, 80));
+        setFocusItem((count) => count + 1);
+        toast.success(`Tag ${tag} added to vault ${edit.code} — save the vault to keep it`);
+        return;
+      }
+      const match = findVaultByTag(vaults ?? [], tag);
+      if (!match) {
+        toast.error(`No vault matches tag “${tag}”`, {
+          description: "Check the label, or add the vault first.",
+        });
+        return;
+      }
+      setSelectedId(match.id);
+      toast.success(`Vault ${match.code} opened`);
+    },
+    [edit, itemCuft, scanMode, vaults],
+  );
+
+  useEffect(() => {
+    if (focusItem) itemInput.current?.focus();
+  }, [focusItem]);
+
   if (!allowed) {
     return (
       <div className="ws-alert" role="alert">
@@ -187,9 +235,20 @@ export default function StorageVaultPage({ role }: { role: string }) {
             Vault availability, stored inventory and recurring holding fees.
           </p>
         </div>
-        <Button onClick={() => setAdding((current) => !current)} className="ws-btn primary">
-          <Plus size={15} /> Add vault
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            className="ws-btn"
+            onClick={() => {
+              setScanMode("vault");
+              setScanOpen(true);
+            }}
+          >
+            <ScanLine size={15} /> Scan Vault Tag
+          </Button>
+          <Button onClick={() => setAdding((current) => !current)} className="ws-btn primary">
+            <Plus size={15} /> Add vault
+          </Button>
+        </div>
       </header>
 
       {error && (
@@ -435,13 +494,24 @@ export default function StorageVaultPage({ role }: { role: string }) {
                   {vaultUsage(edit).cuft} ft³ · {money(monthlyStorageCents(edit) / 100)} / month
                 </p>
               </div>
-              <Button
-                className="ws-btn"
-                aria-label="Close vault"
-                onClick={() => setSelectedId(null)}
-              >
-                <X size={15} />
-              </Button>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  className="ws-btn"
+                  onClick={() => {
+                    setScanMode("item");
+                    setScanOpen(true);
+                  }}
+                >
+                  <ScanLine size={15} /> Scan item tag
+                </Button>
+                <Button
+                  className="ws-btn"
+                  aria-label="Close vault"
+                  onClick={() => setSelectedId(null)}
+                >
+                  <X size={15} />
+                </Button>
+              </div>
             </div>
 
             <div className="mt-4 space-y-3">
@@ -549,6 +619,7 @@ export default function StorageVaultPage({ role }: { role: string }) {
                   <label className="text-xs">
                     Item
                     <input
+                      ref={itemInput}
                       className="ws-input"
                       value={itemName}
                       onChange={(event) => setItemName(event.target.value)}
@@ -669,6 +740,11 @@ export default function StorageVaultPage({ role }: { role: string }) {
                   onChange={(event) => change({ notes: event.target.value })}
                 />
               </label>
+              {lastTag && (
+                <p className="text-xs text-muted-foreground" role="status">
+                  Last scanned tag: {lastTag}
+                </p>
+              )}
 
               <div className="flex gap-2">
                 <Button className="ws-btn primary" disabled={busy} onClick={() => void saveVault()}>
@@ -682,6 +758,20 @@ export default function StorageVaultPage({ role }: { role: string }) {
           </aside>
         </div>
       )}
+
+      <CameraScanner
+        open={scanOpen}
+        title={scanMode === "item" ? "Scan inventory tag" : "Scan vault tag"}
+        hint={
+          scanMode === "item"
+            ? `The scanned tag is added to vault ${edit?.code ?? ""} as stored inventory.`
+            : "Point the camera at the vault label, or type the vault code."
+        }
+        manualLabel="Vault code or tag"
+        manualPlaceholder="A-101"
+        onClose={() => setScanOpen(false)}
+        onResult={applyScan}
+      />
     </div>
   );
 }

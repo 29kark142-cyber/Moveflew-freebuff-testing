@@ -5,6 +5,7 @@ import AiCreditsBadge from "@/components/workspace/AiCreditsBadge";
 import BrandingSettings from "@/components/workspace/BrandingSettings";
 import PendingLeads from "@/components/workspace/PendingLeads";
 import JobNotifications from "@/components/workspace/JobNotifications";
+import JobInvoicePdfButton from "@/components/workspace/JobInvoicePdfButton";
 import { Button } from "@/components/ui/button";
 import DepositSettings from "@/components/workspace/DepositSettings";
 import TravelSettings from "@/components/workspace/TravelSettings";
@@ -2144,6 +2145,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
             <button className="ws-btn" onClick={() => navigate("/app/jobs")}>
               {t("Back to jobs")}
             </button>
+            <JobInvoicePdfButton job={job} />
             <DeleteJobButton
               jobId={job.id}
               role={role}

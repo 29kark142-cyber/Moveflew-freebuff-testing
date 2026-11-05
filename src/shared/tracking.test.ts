@@ -4,6 +4,8 @@ import {
   jobReference,
   newTrackingToken,
   routeProgress,
+  trackingInventory,
+  trackingItemStatus,
   trackingStage,
   TRACKING_TOKEN_RE,
   TRACKING_STAGES,
@@ -137,5 +139,30 @@ describe("live tracking", () => {
     expect(TRACKING_TOKEN_RE.test("trk_short")).toBe(false);
     expect(jobReference(42)).toBe("MF-0042");
     expect(jobReference(7)).toBe("MF-0007");
+  });
+});
+
+describe("customer shipment checklist", () => {
+  it("categorises items from the recorded field stage", () => {
+    expect(trackingItemStatus({})).toBeNull();
+    expect(trackingItemStatus({ start_travel: "2026-01-01T08:00:00.000Z" })).toBe("loaded");
+    expect(trackingItemStatus({ arrive_pickup: "2026-01-01T08:30:00.000Z" })).toBe("loaded");
+    expect(trackingItemStatus({ in_transit: "2026-01-01T09:00:00.000Z" })).toBe("in_transit");
+    expect(trackingItemStatus({ arrive_dropoff: "2026-01-01T10:00:00.000Z" })).toBe("unloaded");
+    expect(trackingItemStatus({ complete: "2026-01-01T11:00:00.000Z" })).toBe("unloaded");
+  });
+
+  it("keeps only names, quantities and a valid status", () => {
+    const items = trackingInventory({ in_transit: "2026-01-01T09:00:00.000Z" }, [
+      { name: "Sofa", quantity: 2 },
+      { name: "Lamp", quantity: 0, status: "unloaded" },
+      { name: "", quantity: "3", status: "bogus" },
+    ]);
+    expect(items.map((item) => item.status)).toEqual(["in_transit", "unloaded", "in_transit"]);
+    expect(items[0]).toMatchObject({ name: "Sofa", quantity: 2 });
+    expect(items[1]?.quantity).toBe(1);
+    expect(items[2]?.name).toBe("Item 3");
+    expect(trackingInventory({}, [{ name: "Chair" }])[0]?.status).toBeNull();
+    expect(trackingInventory({}, Array.from({ length: 50 }, () => ({ name: "Box" })))).toHaveLength(40);
   });
 });

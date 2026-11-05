@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   dueForRelease,
+  findVaultByTag,
   monthlyStorageCents,
   nextInvoiceDate,
   nextVaultCode,
+  normalizeVaultTag,
   recurringByCustomer,
   storageSummary,
   vaultUsage,
@@ -100,5 +102,23 @@ describe("storage vaults", () => {
     expect(nextVaultCode([{ code: "A-101" }, { code: "A-104" }, { code: "B-101" }], "a")).toBe(
       "A-105",
     );
+  });
+});
+
+describe("scanned vault tags", () => {
+  it("normalises camera labels before matching", () => {
+    expect(normalizeVaultTag(" a-101 ")).toBe("A101");
+    expect(normalizeVaultTag("A 101")).toBe("A101");
+    expect(normalizeVaultTag("vault:a-101")).toBe("A101");
+    expect(normalizeVaultTag("https://moveflew.test/vault/A-101")).toBe("A101");
+    expect(normalizeVaultTag("   ")).toBe("");
+  });
+
+  it("matches a scanned tag to exactly the vault that owns it", () => {
+    const vaults = [vault(), vault({ id: 2, code: "B-204" })];
+    expect(findVaultByTag(vaults, "a-101")?.id).toBe(1);
+    expect(findVaultByTag(vaults, " B 204 ")?.id).toBe(2);
+    expect(findVaultByTag(vaults, "A-999")).toBeNull();
+    expect(findVaultByTag(vaults, "")).toBeNull();
   });
 });

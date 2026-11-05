@@ -52,6 +52,30 @@ export function isBillingMode(value: unknown): value is BillingMode {
   return typeof value === "string" && (BILLING_MODES as readonly string[]).includes(value);
 }
 
+/**
+ * Scanned labels are normalised so `a-101`, `A 101` and a `vault:A-101` QR payload
+ * all resolve to the same vault code.
+ */
+export function normalizeVaultTag(value: string): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const tail = raw.includes("/") ? raw.slice(raw.lastIndexOf("/") + 1) : raw;
+  return tail
+    .replace(/^vault[:\s-]*/i, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+/** Finds the vault a scanned tag belongs to, or null when nothing matches. */
+export function findVaultByTag(
+  vaults: Pick<StorageVault, "id" | "code">[],
+  tag: string,
+): Pick<StorageVault, "id" | "code"> | null {
+  const wanted = normalizeVaultTag(tag);
+  if (!wanted) return null;
+  return vaults.find((vault) => normalizeVaultTag(vault.code) === wanted) ?? null;
+}
+
 export function vaultStatusLabel(status: VaultStatus): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
