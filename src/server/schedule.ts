@@ -5,23 +5,15 @@ import type { InventoryEntry, Job, Truck } from "../shared/crm";
 import { appendJobActivity, type JobActivityEvent } from "../shared/job-activity";
 import { conflictsFor, type ScheduledJob } from "../shared/dispatch";
 import {
-  CREW_ASSIGNMENT_EMAIL_BODY,
-  CREW_ASSIGNMENT_EMAIL_SUBJECT,
-  CREW_ASSIGNMENT_SMS,
   crewAssignedDetail,
-  dayLabel,
-  renderCrewNotice,
   rescheduleDetail,
   scheduleDiff,
-  timeLabel,
   truckCapacityConflict,
   type ScheduleAssignment,
 } from "../shared/schedule";
-import { jobReference } from "../shared/tracking";
-import { deliverEmail, deliverSms } from "./quote-dispatch";
+import { sendCrewShiftInvites, type ShiftDelivery } from "./shift-response";
 
 const CLOSED = new Set(["cancelled", "canceled", "completed", "lost", "declined"]);
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const num = (value: unknown) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
@@ -38,13 +30,7 @@ export const scheduleInputSchema = z
 
 export type ScheduleInput = z.infer<typeof scheduleInputSchema>;
 
-export type CrewNoticeResult = {
-  crewId: number;
-  name: string;
-  channel: "sms" | "email" | "none";
-  status: string;
-  detail: string;
-};
+export type CrewNoticeResult = ShiftDelivery;
 
 export type ScheduleDeps = {
   getJob: (id: number) => Promise<{ id: number; data: Record<string, unknown> }>;
@@ -54,6 +40,8 @@ export type ScheduleDeps = {
   save: (id: number, patch: Record<string, unknown>) => Promise<unknown>;
   fail: (status: number, message: string) => never;
   actor: string;
+  /** Absolute site origin used for the public shift confirmation links. */
+  origin: string;
   companyName: string;
 };
 
@@ -161,67 +149,19 @@ export async function scheduleJob(
   };
   const diff = scheduleDiff(before, after);
 
-  const results: CrewNoticeResult[] = [];
-  if (input.notifyCrew) {
-    const reference = jobReference(jobId);
-    for (const id of crewIds) {
-      const member = crew.find((entry) => entry["id"] === id);
-      if (!member) continue;
-      const context = {
-        name: text(member["name"]) || `Crew #${id}`,
-        reference,
-        moveDate: dayLabel(input.moveDate, {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }),
-        time: timeLabel(input.startHour),
-        origin: text(data["origin"]) || "pickup address",
-        destination: text(data["destination"]) || "drop-off address",
-        crewSize: String(Math.max(1, num(data["crewSize"]) || crewIds.length)),
-        companyName: deps.companyName || "your moving company",
-      };
-      const phone = text(member["phone"]);
-      const email = text(member["email"]);
-      let delivered = false;
-      if (phone) {
-        const result = await deliverSms(phone, renderCrewNotice(CREW_ASSIGNMENT_SMS, context));
-        results.push({
-          crewId: id,
-          name: context.name,
-          channel: "sms",
-          status: String(result.status),
-          detail: String(result.detail),
-        });
-        delivered = true;
-      }
-      if (email && EMAIL_RE.test(email)) {
-        const result = await deliverEmail(
-          email,
-          renderCrewNotice(CREW_ASSIGNMENT_EMAIL_SUBJECT, context),
-          renderCrewNotice(CREW_ASSIGNMENT_EMAIL_BODY, context),
-        );
-        results.push({
-          crewId: id,
-          name: context.name,
-          channel: "email",
-          status: String(result.status),
-          detail: String(result.detail),
-        });
-        delivered = true;
-      }
-      if (!delivered)
-        results.push({
-          crewId: id,
-          name: context.name,
-          channel: "none",
-          status: "skipped",
-          detail: "No mobile number or email is saved for this crew member",
-        });
-    }
-  }
-  const notified = results.filter((entry) => entry.status === "accepted").length;
-  const logged = results.filter((entry) => entry.status === "logged").length;
+  const invite = input.notifyCrew
+    ? await sendCrewShiftInvites({
+        jobId,
+        data,
+        crew,
+        crewIds,
+        companyName: deps.companyName,
+        origin: deps.origin,
+      })
+    : null;
+  const results: CrewNoticeResult[] = invite?.results ?? [];
+  const notified = invite?.notified ?? 0;
+  const logged = invite?.logged ?? 0;
 
   const at = new Date().toISOString();
   const events: JobActivityEvent[] = [];
@@ -252,7 +192,10 @@ export async function scheduleJob(
     duration: input.duration,
   };
   if (events.length) patch["activity"] = appendJobActivity(data["activity"], events);
-  if (input.notifyCrew) patch["crewDispatch"] = { at, by: deps.actor, results, notified, logged };
+  if (invite) {
+    patch["crewDispatch"] = { at, by: deps.actor, results, notified, logged };
+    patch["crewShifts"] = invite.shifts;
+  }
 
   await deps.save(jobId, patch);
   return {

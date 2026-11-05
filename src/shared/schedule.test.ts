@@ -184,10 +184,12 @@ describe("schedule changes", () => {
       destination: "9 Oak Ave",
       crewSize: "2",
       companyName: "MoveFlew",
+      link: "https://app.example.com/shift/shf_1_abc",
     });
     expect(text).toContain("Hi Ana");
     expect(text).toContain("MF-1001 on Thu, Nov 5 at 8:00 AM");
     expect(text).toContain("1 Main St to 9 Oak Ave");
+    expect(text).toContain("Confirm or decline: https://app.example.com/shift/shf_1_abc");
     expect(renderCrewNotice("{unknown}", {} as never)).toBe("");
   });
 });

@@ -8,7 +8,9 @@ export type JobActivityKind =
   | "quote_sent"
   | "deposit_paid"
   | "job_rescheduled"
-  | "crew_assigned";
+  | "crew_assigned"
+  | "crew_shift_confirmed"
+  | "crew_shift_declined";
 
 export type JobActivityEvent = {
   /** Stable id, so an offline replay of the same operation never duplicates an event. */

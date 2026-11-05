@@ -189,6 +189,12 @@ export const crm = {
       notifyCrew: boolean;
     }
   ) => crmFetch<Job>(`/jobs/${id}/schedule`, json("POST", value)),
+  /** Mints shift tokens and sends the accept/decline link to every assigned crew member. */
+  dispatchShifts: (id: number) =>
+    crmFetch<Job & { shiftInvites?: { notified: number; logged: number } }>(
+      `/jobs/${id}/shift-dispatch`,
+      json("POST", {})
+    ),
   distance: (origin: string, destination: string) =>
     crmFetch<{
       distanceMiles: number;

@@ -228,10 +228,12 @@ export type CrewNoticeContext = {
   destination: string;
   crewSize: string;
   companyName: string;
+  /** Public shift confirmation link minted for this crew member. */
+  link: string;
 };
 
 export const CREW_ASSIGNMENT_SMS =
-  "Hi {name}, you're scheduled for {reference} on {moveDate} at {time}. {origin} to {destination}. {crewSize} movers total.";
+  "Hi {name}, you're scheduled for {reference} on {moveDate} at {time}. {origin} to {destination}. {crewSize} movers total. Confirm or decline: {link} — reply STOP to opt out.";
 
 export const CREW_ASSIGNMENT_EMAIL_SUBJECT = "Shift update · {reference} on {moveDate}";
 
@@ -246,7 +248,9 @@ export const CREW_ASSIGNMENT_EMAIL_BODY = [
   "To: {destination}",
   "Crew size: {crewSize}",
   "",
-  "If you cannot make this shift, contact {companyName} as soon as possible.",
+  "Confirm or decline this shift: {link}",
+  "",
+  "If you cannot make it, decline there or contact {companyName} as soon as possible.",
   "",
   "— {companyName}",
 ].join("\n");

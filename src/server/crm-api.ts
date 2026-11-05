@@ -244,8 +244,9 @@ const SERVER_FIELDS = new Set([
   "quoteAcceptance",
   "quoteAcceptedAt",
   "quoteDepositIntent",
-  // Crew shift notification receipts are written by the scheduling endpoint only.
+  // Crew shift tokens, receipts and answers are written by the shift endpoints only.
   "crewDispatch",
+  "crewShifts",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -1335,6 +1336,11 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
       if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
         fail(403, "Only dispatch staff can schedule jobs");
       const { scheduleJob } = await import("./schedule");
+      const { data: workspace } = await ctx.db
+        .from("workspaces")
+        .select("name")
+        .eq("id", requireWs(ctx))
+        .maybeSingle();
       const result = await scheduleJob(
         {
           getJob: (jobId) => getOne(ctx, "job", jobId),
@@ -1347,13 +1353,49 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
           save: (jobId, patch) => saveData(ctx, jobId, patch),
           fail,
           actor: ctx.email || "Dispatch",
-          companyName: "",
+          origin: ctx.origin ?? "https://invalid.local",
+          companyName: String(workspace?.name ?? ""),
         },
         id,
         await body(),
       );
       const saved = toRecord(await getOne(ctx, "job", id), requireWs(ctx));
       return { ...saved, schedule: result } as typeof saved & { schedule: typeof result };
+    }
+    // Crew shift confirmations: mint per-crew tokens and send the accept/decline links.
+    if (sub === "shift-dispatch" && method === "POST") {
+      if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
+        fail(403, "Only dispatch staff can send shift confirmations");
+      const current = await getOne(ctx, "job", id);
+      const crewIds = Array.isArray(current.data["crewIds"])
+        ? (current.data["crewIds"] as unknown[]).filter(
+            (value): value is number => typeof value === "number",
+          )
+        : [];
+      if (!crewIds.length) fail(409, "Assign crew before sending shift confirmations");
+      const { sendCrewShiftInvites } = await import("./shift-response");
+      const [{ data: workspace }, crewRows] = await Promise.all([
+        ctx.db.from("workspaces").select("name").eq("id", requireWs(ctx)).maybeSingle(),
+        list(ctx, "crew"),
+      ]);
+      const invite = await sendCrewShiftInvites({
+        jobId: id,
+        data: current.data,
+        crew: crewRows as Record<string, unknown>[],
+        crewIds,
+        companyName: String(workspace?.name ?? ""),
+        origin: ctx.origin ?? "https://invalid.local",
+      });
+      await saveData(ctx, id, { crewShifts: invite.shifts });
+      const saved = toRecord(await getOne(ctx, "job", id), requireWs(ctx));
+      return {
+        ...saved,
+        shiftInvites: {
+          notified: invite.notified,
+          logged: invite.logged,
+          results: invite.results,
+        },
+      };
     }
     if (sub === "clock" && method === "POST") {
       const { action } = (await body()) as { action?: string };

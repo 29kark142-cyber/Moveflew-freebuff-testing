@@ -70,6 +70,7 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 import RouteSummaryCard from "@/components/workspace/RouteSummaryCard";
 import JobRoutePricing from "@/components/workspace/JobRoutePricing";
 import JobFieldProgress from "@/components/workspace/JobFieldProgress";
+import CrewShiftStatus from "@/components/workspace/CrewShiftStatus";
 import QuoteDispatch from "@/components/workspace/QuoteDispatch";
 import { routeTravelPricing } from "@shared/route-pricing";
 import type { AddressRoute } from "@/lib/places";
@@ -2349,6 +2350,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
       <JobRoutePricing job={job} role={role} onSaved={() => refresh()} />
       <QuoteDispatch job={job} role={role} variant="panel" onSent={() => void refresh()} />
       <JobFieldProgress job={job} onRefresh={() => refresh()} />
+      <CrewShiftStatus job={job} role={role} onRefresh={() => refresh()} />
       <div className="ws-grid">
         <section className="ws-card ws-card-pad">
           <div className="ws-card-title">

@@ -24,6 +24,13 @@ import type { Job, WorkspaceRole } from "@shared/crm";
 import { allConflicts, conflictsFor, type ScheduledJob } from "@shared/dispatch";
 import { jobActivity } from "@shared/job-activity";
 import {
+  crewShifts,
+  declineReasonLabel,
+  jobCrewShifts,
+  shiftCounts,
+  shiftStatusLabel,
+} from "@shared/shift";
+import {
   ACTIVE_SCHEDULE_STATUSES,
   DEFAULT_SCHEDULE_FILTERS,
   addDays,
@@ -135,6 +142,11 @@ export default function SchedulePage({
   const visible = useMemo(() => filterScheduleJobs(jobs, filters), [jobs, filters]);
   const byDay = useMemo(() => jobsByDay(visible), [visible]);
   const conflicts = useMemo(() => allConflicts(visible.map(scheduled)), [visible]);
+  const declinedJobs = useMemo(
+    () =>
+      visible.filter((job) => shiftCounts(jobCrewShifts(job.crewShifts, job.crewIds)).declined > 0),
+    [visible],
+  );
 
   const openEdit = (job: Job, overrides: Partial<Draft> = {}) => {
     setEditing(job);
@@ -432,6 +444,28 @@ export default function SchedulePage({
         </p>
       )}
 
+      {declinedJobs.length > 0 && (
+        <div className="schedule-notice is-danger" role="status">
+          <CircleAlert size={15} />
+          <span>
+            {tx(
+              `${declinedJobs.length} job(s) have a crew member who declined — assign a replacement.`,
+              `${declinedJobs.length} заказ(ов) с отказом сотрудника — назначьте замену.`,
+            )}{" "}
+            {declinedJobs.map((job) => (
+              <button
+                key={job.id}
+                type="button"
+                className="schedule-linkbtn"
+                onClick={() => openEdit(job)}
+              >
+                #{job.id}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
+
       {view === "month" && (
         <section
           className="schedule-month"
@@ -608,6 +642,18 @@ export default function SchedulePage({
                     />
                     {member.name}
                     {member.status === "inactive" && ` · ${tx("inactive", "неактивен")}`}
+                    {(() => {
+                      const entry = crewShifts(editing.crewShifts).find(
+                        (item) => item.crewId === member.id,
+                      );
+                      if (!entry) return null;
+                      return (
+                        <em className={`schedule-crew__status is-${entry.status}`}>
+                          {shiftStatusLabel(entry.status)}
+                          {entry.reason ? ` · ${declineReasonLabel(entry.reason)}` : ""}
+                        </em>
+                      );
+                    })()}
                   </label>
                 ))}
                 {!crew.length && (
@@ -639,8 +685,8 @@ export default function SchedulePage({
                 <b>{tx("Notify assigned crew", "Уведомить назначенную бригаду")}</b>
                 <small>
                   {tx(
-                    "Sends the move date, time and addresses by SMS and email to the assigned crew.",
-                    "Отправляет дату, время и адреса назначенной бригаде по SMS и email.",
+                    "Sends the move date, time and addresses plus an accept/decline link by SMS and email.",
+                    "Отправляет дату, время, адреса и ссылку для подтверждения по SMS и email.",
                   )}
                 </small>
               </span>
@@ -710,13 +756,16 @@ function JobBlock({
   onDragStart: (event: DragEvent) => void;
   detailed?: boolean;
 }) {
+  const counts = shiftCounts(jobCrewShifts(job.crewShifts, job.crewIds));
   return (
     <button
       type="button"
       draggable
       onDragStart={onDragStart}
       onClick={onOpen}
-      className={`schedule-block is-${scheduleTone(job.status)}`}
+      className={`schedule-block is-${scheduleTone(job.status)}${
+        counts.declined > 0 ? " has-declined" : ""
+      }`}
       title={`#${job.id} ${job.customerName || job.title} · ${timeLabel(job.startHour)}–${timeLabel(
         Number(job.startHour) + Number(job.duration),
       )}`}
@@ -732,6 +781,13 @@ function JobBlock({
         {crewLabel || "Unassigned"}
         {detailed ? "" : ""}
       </small>
+      {(counts.pending > 0 || counts.confirmed > 0 || counts.declined > 0) && (
+        <em className="schedule-shifts">
+          <i className="is-confirmed">✓ {counts.confirmed}</i>
+          <i className="is-pending">… {counts.pending}</i>
+          {counts.declined > 0 && <i className="is-declined">✕ {counts.declined}</i>}
+        </em>
+      )}
     </button>
   );
 }

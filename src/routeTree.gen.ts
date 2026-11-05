@@ -34,6 +34,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MoveJobIdRouteImport } from './routes/move.$jobId'
 import { Route as ProposalTokenRouteImport } from './routes/proposal.$token'
 import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
+import { Route as ShiftTokenRouteImport } from './routes/shift.$token'
 import { Route as ApiCrmSplatRouteImport } from './routes/api/crm/$'
 import { Route as ApiCronNotificationsRouteImport } from './routes/api/cron/notifications'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
@@ -42,6 +43,7 @@ import { Route as ApiPublicV1LeadsRouteImport } from './routes/api/public/v1/lea
 import { Route as ApiPublicV1QuotesRouteImport } from './routes/api/public/v1/quotes'
 import { Route as ApiQuoteTokenAcceptRouteImport } from './routes/api.quote.$token.accept'
 import { Route as ApiQuoteTokenDepositIntentRouteImport } from './routes/api.quote.$token.deposit-intent'
+import { Route as ApiShiftTokenRespondRouteImport } from './routes/api.shift.$token.respond'
 import { Route as ApiV1PublicQuotesRouteImport } from './routes/api/v1/public/quotes'
 import { Route as ApiPublicV1HooksTokenRouteImport } from './routes/api/public/v1/hooks/$token'
 import { Route as ApiPublicV1TrackTokenRouteImport } from './routes/api/public/v1/track/$token'
@@ -172,6 +174,11 @@ const QuoteTokenRoute = QuoteTokenRouteImport.update({
   path: '/quote/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShiftTokenRoute = ShiftTokenRouteImport.update({
+  id: '/shift/$token',
+  path: '/shift/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCrmSplatRoute = ApiCrmSplatRouteImport.update({
   id: '/api/crm/$',
   path: '/api/crm/$',
@@ -214,6 +221,11 @@ const ApiQuoteTokenDepositIntentRoute =
     path: '/api/quote/$token/deposit-intent',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiShiftTokenRespondRoute = ApiShiftTokenRespondRouteImport.update({
+  id: '/api/shift/$token/respond',
+  path: '/api/shift/$token/respond',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1PublicQuotesRoute = ApiV1PublicQuotesRouteImport.update({
   id: '/api/v1/public/quotes',
   path: '/api/v1/public/quotes',
@@ -256,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/move/$jobId': typeof MoveJobIdRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
+  '/shift/$token': typeof ShiftTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
@@ -264,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
   '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
+  '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
@@ -294,6 +308,7 @@ export interface FileRoutesByTo {
   '/move/$jobId': typeof MoveJobIdRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
+  '/shift/$token': typeof ShiftTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
@@ -302,6 +317,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
   '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
+  '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
@@ -333,6 +349,7 @@ export interface FileRoutesById {
   '/move/$jobId': typeof MoveJobIdRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
+  '/shift/$token': typeof ShiftTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
@@ -341,6 +358,7 @@ export interface FileRoutesById {
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
   '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
+  '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
@@ -373,6 +391,7 @@ export interface FileRouteTypes {
     | '/move/$jobId'
     | '/proposal/$token'
     | '/quote/$token'
+    | '/shift/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/webhooks/stripe'
@@ -381,6 +400,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
     | '/api/quote/$token/deposit-intent'
+    | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
@@ -411,6 +431,7 @@ export interface FileRouteTypes {
     | '/move/$jobId'
     | '/proposal/$token'
     | '/quote/$token'
+    | '/shift/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/webhooks/stripe'
@@ -419,6 +440,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
     | '/api/quote/$token/deposit-intent'
+    | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
@@ -449,6 +471,7 @@ export interface FileRouteTypes {
     | '/move/$jobId'
     | '/proposal/$token'
     | '/quote/$token'
+    | '/shift/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/webhooks/stripe'
@@ -457,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
     | '/api/quote/$token/deposit-intent'
+    | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
@@ -488,6 +512,7 @@ export interface RootRouteChildren {
   MoveJobIdRoute: typeof MoveJobIdRoute
   ProposalTokenRoute: typeof ProposalTokenRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
+  ShiftTokenRoute: typeof ShiftTokenRoute
   ApiCrmSplatRoute: typeof ApiCrmSplatRoute
   ApiCronNotificationsRoute: typeof ApiCronNotificationsRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
@@ -496,6 +521,7 @@ export interface RootRouteChildren {
   ApiPublicV1QuotesRoute: typeof ApiPublicV1QuotesRoute
   ApiQuoteTokenAcceptRoute: typeof ApiQuoteTokenAcceptRoute
   ApiQuoteTokenDepositIntentRoute: typeof ApiQuoteTokenDepositIntentRoute
+  ApiShiftTokenRespondRoute: typeof ApiShiftTokenRespondRoute
   ApiV1PublicQuotesRoute: typeof ApiV1PublicQuotesRoute
   ApiPublicV1HooksTokenRoute: typeof ApiPublicV1HooksTokenRoute
   ApiPublicV1TrackTokenRoute: typeof ApiPublicV1TrackTokenRoute
@@ -678,6 +704,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuoteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shift/$token': {
+      id: '/shift/$token'
+      path: '/shift/$token'
+      fullPath: '/shift/$token'
+      preLoaderRoute: typeof ShiftTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/crm/$': {
       id: '/api/crm/$'
       path: '/api/crm/$'
@@ -734,6 +767,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiQuoteTokenDepositIntentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shift/$token/respond': {
+      id: '/api/shift/$token/respond'
+      path: '/api/shift/$token/respond'
+      fullPath: '/api/shift/$token/respond'
+      preLoaderRoute: typeof ApiShiftTokenRespondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/public/quotes': {
       id: '/api/v1/public/quotes'
       path: '/api/v1/public/quotes'
@@ -785,6 +825,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoveJobIdRoute: MoveJobIdRoute,
   ProposalTokenRoute: ProposalTokenRoute,
   QuoteTokenRoute: QuoteTokenRoute,
+  ShiftTokenRoute: ShiftTokenRoute,
   ApiCrmSplatRoute: ApiCrmSplatRoute,
   ApiCronNotificationsRoute: ApiCronNotificationsRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
@@ -793,6 +834,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1QuotesRoute: ApiPublicV1QuotesRoute,
   ApiQuoteTokenAcceptRoute: ApiQuoteTokenAcceptRoute,
   ApiQuoteTokenDepositIntentRoute: ApiQuoteTokenDepositIntentRoute,
+  ApiShiftTokenRespondRoute: ApiShiftTokenRespondRoute,
   ApiV1PublicQuotesRoute: ApiV1PublicQuotesRoute,
   ApiPublicV1HooksTokenRoute: ApiPublicV1HooksTokenRoute,
   ApiPublicV1TrackTokenRoute: ApiPublicV1TrackTokenRoute,

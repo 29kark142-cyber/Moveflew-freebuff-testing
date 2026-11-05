@@ -1,0 +1,210 @@
+/* Public crew shift page: single mobile-first card, large tap targets, safe-area aware. */
+.shift-page {
+  min-height: 100vh;
+  padding: calc(18px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+  background: var(--background);
+  color: var(--foreground);
+  display: flex;
+  justify-content: center;
+}
+.shift-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 12px 40px hsl(220 40% 2% / 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.shift-card--center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  min-height: 220px;
+}
+.shift-card--center h1 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.shift-card--center p {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.shift-spin {
+  animation: shift-spin 0.9s linear infinite;
+}
+@keyframes shift-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.shift-head h1 {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.shift-company {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.shift-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.shift-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+.shift-banner b {
+  display: block;
+}
+.shift-banner small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.shift-banner.is-confirmed {
+  border-color: color-mix(in srgb, #12855b 35%, var(--border));
+  background: color-mix(in srgb, #12855b 9%, var(--background));
+  color: #12855b;
+}
+.shift-banner.is-declined {
+  border-color: color-mix(in srgb, #b42318 35%, var(--border));
+  background: color-mix(in srgb, #b42318 8%, var(--background));
+  color: #b42318;
+}
+.shift-details {
+  display: grid;
+  gap: 12px;
+}
+.shift-details > div {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.shift-details > div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.shift-details svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.shift-details small {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.shift-details b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.shift-details a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  margin-right: 12px;
+  font-size: 13px;
+  color: var(--primary);
+}
+.shift-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, #b42318 35%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, #b42318 7%, var(--background));
+  color: #b42318;
+  font-size: 13px;
+}
+.shift-actions {
+  display: grid;
+  gap: 10px;
+}
+.shift-actions button {
+  min-height: 52px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+.shift-decline h2 {
+  font-size: 15px;
+  font-weight: 650;
+}
+.shift-reasons {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.shift-reasons label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.shift-reasons label.is-active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 7%, var(--background));
+  font-weight: 600;
+}
+.shift-note {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.shift-note textarea {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 14px;
+  resize: vertical;
+}
+.shift-help {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.shift-help a {
+  color: var(--primary);
+  font-weight: 600;
+}
+.shift-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted-foreground);
+}

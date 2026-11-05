@@ -1,6 +1,7 @@
 import { clampDiscountPercent } from "./route-pricing";
 import type { SurchargeSettings } from "./surcharges";
 import type { JobActivityEvent } from "./job-activity";
+import type { CrewShift } from "./shift";
 import type { MoveChecklistState } from "./move-checklist";
 
 export type WorkspaceRole =
@@ -84,6 +85,8 @@ export type Job = {
   moveChecklist?: MoveChecklistState | null;
   /** Server-appended job activity log, newest first. */
   activity?: JobActivityEvent[];
+  /** Per-crew shift confirmation tokens and answers written by dispatch. */
+  crewShifts?: CrewShift[];
   invoiceStatus: string;
   actualHours: number | null;
   finalTotal: number | null;

@@ -355,3 +355,64 @@
     display: none;
   }
 }
+
+/* Crew shift confirmation badges on calendar blocks and inside the editor. */
+.schedule-block.has-declined {
+  box-shadow: inset 0 0 0 1px #b42318;
+}
+.schedule-shifts {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+.schedule-shifts i {
+  font-style: normal;
+}
+.schedule-shifts .is-confirmed {
+  color: #12855b;
+}
+.schedule-shifts .is-pending {
+  color: #b7791f;
+}
+.schedule-shifts .is-declined {
+  color: #b42318;
+}
+.schedule-notice.is-danger {
+  border-color: color-mix(in srgb, #b42318 35%, var(--border));
+  background: color-mix(in srgb, #b42318 7%, var(--background));
+  color: #b42318;
+}
+.schedule-linkbtn {
+  margin-right: 6px;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.schedule-crew__status {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.schedule-crew__status.is-pending {
+  background: #b7791f1a;
+  color: #8a5a14;
+}
+.schedule-crew__status.is-confirmed {
+  background: #12855b1c;
+  color: #0f6b49;
+}
+.schedule-crew__status.is-declined {
+  background: #b423181a;
+  color: #8f1d14;
+}
