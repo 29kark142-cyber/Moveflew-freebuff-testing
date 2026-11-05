@@ -2,6 +2,7 @@
 // Every request runs as the signed-in user, so database row security applies.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { QUOTE_EMAIL_RE, QUOTE_PHONE_RE } from "../shared/quote-dispatch";
 import { calculateQuote, DEFAULT_PRICING, type Pricing } from "../shared/crm";
 import { conflictsFor, type ScheduledJob } from "../shared/dispatch";
 import { fieldRoute } from "./field-api";
@@ -234,6 +235,11 @@ const SERVER_FIELDS = new Set([
   "moveChecklist",
   "moveChecklistUpdatedAt",
   "activity",
+  // Quote tokens and delivery history are minted and written by the server only.
+  "quoteToken",
+  "quoteDispatch",
+  "quoteSentAt",
+  "quoteDispatchedAt",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -1233,6 +1239,43 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
     return { deleted: true };
   }
   if (head === "jobs" && id && sub) {
+    // One-click quote dispatch: GET returns the pre-filled preview, POST sends and records it.
+    if (sub === "quote-dispatch") {
+      if (!["admin", "office_admin", "dispatcher", "estimator"].includes(ctx.role ?? ""))
+        fail(403, "Only office staff can send quotes to customers");
+      const ws = requireWs(ctx);
+      const current = await getOne(ctx, "job", id);
+      const job = { id, data: current.data };
+      const deps = {
+        db: ctx.db,
+        wsId: ws,
+        userId: ctx.userId,
+        origin: ctx.origin ?? "https://invalid.local",
+        save: (jobId: number, patch: Record<string, unknown>) => saveData(ctx, jobId, patch),
+      };
+      const { dispatchQuote, quoteDispatchPreview } = await import("./quote-dispatch");
+      if (method === "GET") return quoteDispatchPreview(deps, job);
+      if (method === "POST") {
+        const b = z
+          .object({
+            email: z.string().trim().max(200).default(""),
+            phone: z.string().trim().max(40).default(""),
+            channels: z
+              .array(z.enum(["email", "sms"]))
+              .min(1)
+              .max(2),
+            subject: z.string().trim().min(1).max(200),
+            emailBody: z.string().trim().min(1).max(4000),
+            smsBody: z.string().trim().min(1).max(1000),
+          })
+          .parse(await body());
+        if (b.channels.includes("email") && !QUOTE_EMAIL_RE.test(b.email))
+          fail(400, "Add a valid customer email address");
+        if (b.channels.includes("sms") && !QUOTE_PHONE_RE.test(b.phone))
+          fail(400, "Add a valid customer mobile number");
+        return dispatchQuote(deps, job, b);
+      }
+    }
     if (sub === "notifications") {
       if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
         fail(403, "Only office staff can send customer messages");

@@ -70,6 +70,7 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 import RouteSummaryCard from "@/components/workspace/RouteSummaryCard";
 import JobRoutePricing from "@/components/workspace/JobRoutePricing";
 import JobFieldProgress from "@/components/workspace/JobFieldProgress";
+import QuoteDispatch from "@/components/workspace/QuoteDispatch";
 import { routeTravelPricing } from "@shared/route-pricing";
 import type { AddressRoute } from "@/lib/places";
 import { crm, getWorkspaceId, type Member } from "@/lib/crm";
@@ -2173,6 +2174,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
               {t("Back to jobs")}
             </button>
             <JobInvoicePdfButton job={job} />
+            <QuoteDispatch job={job} role={role} variant="header" onSent={() => void refresh()} />
             <DeleteJobButton
               jobId={job.id}
               role={role}
@@ -2275,9 +2277,9 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
                 value={status || job.status}
                 onChange={event => setStatus(eventValue(event))}
               >
-                {["draft", "estimate", "booked", "cancelled"].map(value => (
+                {["draft", "estimate", "quote_sent", "booked", "cancelled"].map(value => (
                   <option key={value} value={value}>
-                    {t(value)}
+                    {t(value === "quote_sent" ? "Quote Sent" : value)}
                   </option>
                 ))}
               </select>
@@ -2345,6 +2347,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
         </aside>
       </div>
       <JobRoutePricing job={job} role={role} onSaved={() => refresh()} />
+      <QuoteDispatch job={job} role={role} variant="panel" onSent={() => void refresh()} />
       <JobFieldProgress job={job} onRefresh={() => refresh()} />
       <div className="ws-grid">
         <section className="ws-card ws-card-pad">

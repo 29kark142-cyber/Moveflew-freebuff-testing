@@ -33,6 +33,7 @@ import { Route as EmbedLeadRouteImport } from './routes/embed.lead'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MoveJobIdRouteImport } from './routes/move.$jobId'
 import { Route as ProposalTokenRouteImport } from './routes/proposal.$token'
+import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
 import { Route as ApiCrmSplatRouteImport } from './routes/api/crm/$'
 import { Route as ApiCronNotificationsRouteImport } from './routes/api/cron/notifications'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
@@ -164,6 +165,11 @@ const ProposalTokenRoute = ProposalTokenRouteImport.update({
   path: '/proposal/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuoteTokenRoute = QuoteTokenRouteImport.update({
+  id: '/quote/$token',
+  path: '/quote/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCrmSplatRoute = ApiCrmSplatRouteImport.update({
   id: '/api/crm/$',
   path: '/api/crm/$',
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/move/$jobId': typeof MoveJobIdRoute
   '/proposal/$token': typeof ProposalTokenRoute
+  '/quote/$token': typeof QuoteTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/move/$jobId': typeof MoveJobIdRoute
   '/proposal/$token': typeof ProposalTokenRoute
+  '/quote/$token': typeof QuoteTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/move/$jobId': typeof MoveJobIdRoute
   '/proposal/$token': typeof ProposalTokenRoute
+  '/quote/$token': typeof QuoteTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/move/$jobId'
     | '/proposal/$token'
+    | '/quote/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/webhooks/stripe'
@@ -379,6 +389,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/move/$jobId'
     | '/proposal/$token'
+    | '/quote/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/webhooks/stripe'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/move/$jobId'
     | '/proposal/$token'
+    | '/quote/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/webhooks/stripe'
@@ -450,6 +462,7 @@ export interface RootRouteChildren {
   InviteTokenRoute: typeof InviteTokenRoute
   MoveJobIdRoute: typeof MoveJobIdRoute
   ProposalTokenRoute: typeof ProposalTokenRoute
+  QuoteTokenRoute: typeof QuoteTokenRoute
   ApiCrmSplatRoute: typeof ApiCrmSplatRoute
   ApiCronNotificationsRoute: typeof ApiCronNotificationsRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
@@ -631,6 +644,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProposalTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quote/$token': {
+      id: '/quote/$token'
+      path: '/quote/$token'
+      fullPath: '/quote/$token'
+      preLoaderRoute: typeof QuoteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/crm/$': {
       id: '/api/crm/$'
       path: '/api/crm/$'
@@ -723,6 +743,7 @@ const rootRouteChildren: RootRouteChildren = {
   InviteTokenRoute: InviteTokenRoute,
   MoveJobIdRoute: MoveJobIdRoute,
   ProposalTokenRoute: ProposalTokenRoute,
+  QuoteTokenRoute: QuoteTokenRoute,
   ApiCrmSplatRoute: ApiCrmSplatRoute,
   ApiCronNotificationsRoute: ApiCronNotificationsRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
