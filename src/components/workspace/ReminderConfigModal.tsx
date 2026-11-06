@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { crmFetch } from "@/lib/crm";
+import { Link } from "@/lib/wouter";
 
 type Attempt = { channel: string; target: string; status: string; detail: string };
 type StoredReminder = {
@@ -32,6 +33,9 @@ type Reminder = {
   status: string;
   window: string;
   scheduleLabel: string;
+  enabled: boolean;
+  leadHours: number;
+  channels: { sms: boolean; email: boolean };
   last: StoredReminder | null;
   preview: { sms: string; emailSubject: string; email: string };
 };
@@ -56,6 +60,7 @@ const chipFor = (reminder: Reminder) => {
   if (reminder.last?.attempts.some((entry) => entry.status === "failed"))
     return { tone: "red", label: "Failed" };
   if (reminder.last) return { tone: "orange", label: "Logged" };
+  if (!reminder.enabled) return { tone: "", label: "Turned off" };
   if (reminder.status === "due") return { tone: "orange", label: "Due now" };
   if (reminder.status === "past") return { tone: "", label: "Pickup passed" };
   return { tone: "", label: "Scheduled" };
@@ -132,7 +137,7 @@ export default function ReminderConfigModal({
       <div className="ws-card-title">
         <div>
           <h2>Pre-Move Reminders</h2>
-          <p>Automated 24-hour and 2-hour customer reminders before pickup.</p>
+          <p>Automated customer reminders before pickup, timed by workspace settings.</p>
         </div>
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
           <BellRing size={14} /> {panel?.window ?? "—"}
@@ -176,6 +181,12 @@ export default function ReminderConfigModal({
                           .join(", ")}
                       </small>
                     )}
+                    <small>
+                      {reminder.enabled ? "Channels: " : "Turned off · channels: "}
+                      {[reminder.channels.sms ? "SMS" : "", reminder.channels.email ? "Email" : ""]
+                        .filter(Boolean)
+                        .join(" + ") || "none"}
+                    </small>
                   </span>
                   <span className="flex items-center gap-2">
                     <span className={`ws-chip ${chip.tone}`}>{chip.label}</span>
@@ -184,7 +195,9 @@ export default function ReminderConfigModal({
                         type="button"
                         className="ws-btn"
                         onClick={() => open(reminder)}
-                        disabled={!panel.recipient}
+                        disabled={
+                          !panel.recipient || (!reminder.channels.sms && !reminder.channels.email)
+                        }
                       >
                         {reminder.sentAt ? "Resend" : "Send now"}
                       </button>
@@ -194,6 +207,13 @@ export default function ReminderConfigModal({
               );
             })}
           </div>
+          <p className="ws-helper">
+            Lead times, channels and copy come from{" "}
+            <Link href="/app/settings" className="underline">
+              workspace reminder settings
+            </Link>
+            .
+          </p>
           <p className="ws-helper">
             Recipient: {panel.recipient || "no customer phone or email on file"} ·{" "}
             {panel.providers.sms

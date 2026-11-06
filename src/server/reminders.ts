@@ -5,25 +5,28 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendJobActivity } from "../shared/job-activity";
 import {
-  PRE_MOVE_REMINDERS,
-  PRE_MOVE_REMINDER_KINDS,
   isPreMoveReminderKind,
+  parseReminderSettings,
   reminderActivity,
   reminderArrivalWindow,
+  reminderChannels,
   reminderDateLabel,
   reminderJobActive,
+  reminderLeadHours,
   reminderPickupAt,
   reminderPlan,
   reminderRecipientLabel,
   reminderScheduleLabel,
   reminderState,
   reminderTargets,
+  reminderTemplate,
   renderReminder,
   type PreMoveReminderKind,
   type PreMoveReminderRecord,
   type PreMoveReminderState,
   type ReminderAttempt,
   type ReminderContext,
+  type ReminderSettings,
 } from "../shared/reminders";
 import { jobReference, TRACKING_TOKEN_RE } from "../shared/tracking";
 import { emailConfigured, smsConfigured } from "./notifications";
@@ -142,6 +145,60 @@ async function contextOf(deps: ReminderDeps, job: Job): Promise<ReminderContext>
   };
 }
 
+/**
+ * Workspace reminder rules live on the same single `setting` record as the review link, so
+ * no schema change is needed and every workspace starts from the 24h / 2h defaults.
+ */
+export async function loadReminderSettings(
+  db: SupabaseClient,
+  wsId: number,
+): Promise<ReminderSettings> {
+  const { data } = await db
+    .from("workspace_records")
+    .select("data")
+    .eq("workspace_id", wsId)
+    .eq("kind", "setting")
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return parseReminderSettings(
+    ((data as { data?: Record<string, unknown> } | null)?.data ?? {})["reminderSettings"],
+  );
+}
+
+/** Merges the reminder block onto the settings record, leaving unrelated settings intact. */
+export async function saveReminderSettings(
+  db: SupabaseClient,
+  wsId: number,
+  userId: string,
+  settings: ReminderSettings,
+): Promise<ReminderSettings> {
+  const { data: existing } = await db
+    .from("workspace_records")
+    .select("id,data")
+    .eq("workspace_id", wsId)
+    .eq("kind", "setting")
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const row = existing as { id?: number; data?: Record<string, unknown> } | null;
+  const data = { ...(row?.data ?? {}), reminderSettings: settings, updatedBy: userId };
+  if (row?.id) {
+    const { error } = await db
+      .from("workspace_records")
+      .update({ data: data as never, updated_at: new Date().toISOString() })
+      .eq("id", row.id)
+      .eq("workspace_id", wsId);
+    if (error) throw new ReminderError("Could not save reminder settings", 403);
+    return settings;
+  }
+  const { error } = await db
+    .from("workspace_records")
+    .insert({ workspace_id: wsId, kind: "setting", data: data as never });
+  if (error) throw new ReminderError("Could not save reminder settings", 403);
+  return settings;
+}
+
 export type ReminderSendResult = {
   kind: PreMoveReminderKind;
   sent: boolean;
@@ -157,7 +214,7 @@ export async function sendPreMoveReminder(
   deps: ReminderDeps,
   job: Job,
   kind: PreMoveReminderKind,
-  options: { force?: boolean; now?: number } = {},
+  options: { force?: boolean; now?: number; settings?: ReminderSettings } = {},
 ): Promise<ReminderSendResult> {
   if (!isPreMoveReminderKind(kind)) throw new ReminderError("Unknown pre-move reminder", 400);
   if (!reminderJobActive(job.data["status"]))
@@ -170,18 +227,24 @@ export async function sendPreMoveReminder(
   if (existing?.sentAt && !options.force)
     return { kind, sent: false, skipped: true, record: existing };
 
+  const settings = options.settings ?? (await loadReminderSettings(deps.db, deps.wsId));
+  const channels = reminderChannels(kind, settings);
+  if (!channels.sms && !channels.email)
+    throw new ReminderError("Turn on SMS or email for this reminder in Settings → Reminders", 409);
+
   const targets = reminderTargets(job.data);
-  const email = EMAIL_RE.test(targets.email) ? targets.email : "";
-  if (!targets.phone && !email)
+  const phone = channels.sms ? targets.phone : "";
+  const email = channels.email && EMAIL_RE.test(targets.email) ? targets.email : "";
+  if (!phone && !email)
     throw new ReminderError("Add a customer phone number or email before sending reminders", 409);
 
   const context = await contextOf(deps, job);
-  const template = PRE_MOVE_REMINDERS[kind];
+  const template = reminderTemplate(kind, settings);
   const attempts: ReminderAttempt[] = [];
 
-  if (targets.phone) {
-    const result = await deliverSms(targets.phone, renderReminder(template.sms, context));
-    attempts.push({ channel: "sms", target: targets.phone, ...result });
+  if (phone) {
+    const result = await deliverSms(phone, renderReminder(template.sms, context));
+    attempts.push({ channel: "sms", target: phone, ...result });
   }
   if (email) {
     const result = await deliverEmail(
@@ -202,6 +265,7 @@ export async function sendPreMoveReminder(
     by: deps.userId,
     sentAt: accepted ? at : null,
     window: context.window,
+    leadHours: reminderLeadHours(kind, settings),
     attempts,
   };
   const state: PreMoveReminderState = {
@@ -223,6 +287,7 @@ export type ReminderPanelData = {
   recipient: string;
   providers: { sms: boolean; email: boolean };
   active: boolean;
+  settings: ReminderSettings;
   reminders: Array<
     ReturnType<typeof reminderPlan>[number] & {
       scheduleLabel: string;
@@ -238,6 +303,7 @@ export async function reminderPanel(
   now = Date.now(),
 ): Promise<ReminderPanelData> {
   const context = await contextOf(deps, job);
+  const settings = await loadReminderSettings(deps.db, deps.wsId);
   return {
     reference: context.reference,
     pickupAt: reminderPickupAt(job.data)?.toISOString() ?? null,
@@ -250,8 +316,9 @@ export async function reminderPanel(
     recipient: reminderRecipientLabel(job.data),
     providers: { sms: smsConfigured(), email: emailConfigured() },
     active: reminderJobActive(job.data["status"]),
-    reminders: reminderPlan(job.data, now).map((entry) => {
-      const template = PRE_MOVE_REMINDERS[entry.kind];
+    settings,
+    reminders: reminderPlan(job.data, now, settings).map((entry) => {
+      const template = reminderTemplate(entry.kind, settings);
       return {
         ...entry,
         scheduleLabel: reminderScheduleLabel(entry.dueAt, now),
@@ -293,10 +360,11 @@ export async function sweepPreMoveReminders(
     failed: 0,
     results: [],
   };
+  const settings = await loadReminderSettings(deps.db, deps.wsId);
   for (const job of jobs) {
     if (!reminderJobActive(job.data["status"])) continue;
-    for (const entry of reminderPlan(job.data, now)) {
-      if (entry.status !== "due") continue;
+    for (const entry of reminderPlan(job.data, now, settings)) {
+      if (!entry.enabled || entry.status !== "due") continue;
       const last = entry.last;
       if (last && !last.sentAt && now - Date.parse(last.at) < RETRY_AFTER_MS) {
         result.skipped += 1;
@@ -304,7 +372,7 @@ export async function sweepPreMoveReminders(
       }
       result.attempted += 1;
       try {
-        const sent = await sendPreMoveReminder(deps, job, entry.kind, { now });
+        const sent = await sendPreMoveReminder(deps, job, entry.kind, { now, settings });
         if (sent.sent) result.sent += 1;
         else result.logged += 1;
         result.results.push({ jobId: job.id, kind: entry.kind, sent: sent.sent });

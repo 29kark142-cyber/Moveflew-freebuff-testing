@@ -1,18 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_REMINDER_SETTINGS,
   PRE_MOVE_REMINDERS,
+  parseReminderSettings,
   reminderActivity,
+  reminderActivityTitle,
   reminderArrivalWindow,
+  reminderChannels,
   reminderDueAt,
   reminderJobActive,
   reminderPickupAt,
   reminderPlan,
   reminderRecipientLabel,
   reminderScheduleLabel,
+  reminderSettingsInput,
   reminderState,
+  reminderTemplate,
   renderReminder,
   type PreMoveReminderRecord,
   type ReminderContext,
+  type ReminderSettings,
+  type ReminderTierSettings,
 } from "./reminders";
 
 const job = (over: Record<string, unknown> = {}) => ({
@@ -197,5 +205,83 @@ describe("pre-move reminder state and activity", () => {
     expect(reminderRecipientLabel(job())).toBe("+15550102030 · jane@example.com");
     expect(reminderRecipientLabel(job({ customerPhone: "" }))).toBe("jane@example.com");
     expect(reminderRecipientLabel(job({ customerPhone: "", customerEmail: "" }))).toBe("");
+  });
+});
+
+const tuned = (
+  first: Partial<ReminderTierSettings> = {},
+  second: Partial<ReminderTierSettings> = {},
+): ReminderSettings => ({
+  first: { ...DEFAULT_REMINDER_SETTINGS.first, ...first },
+  second: { ...DEFAULT_REMINDER_SETTINGS.second, ...second },
+});
+
+describe("workspace reminder settings", () => {
+  it("moves both dispatches when the lead times are customised", () => {
+    const custom = tuned({ leadHours: 48 }, { leadHours: 3 });
+    expect(reminderDueAt(job(), "pre_move_24h", custom)).toBe("2026-05-01T08:00:00.000Z");
+    expect(reminderDueAt(job(), "pre_move_2h", custom)).toBe("2026-05-03T05:00:00.000Z");
+
+    const plan = reminderPlan(job(), Date.parse("2026-05-02T09:00:00Z"), custom);
+    expect(plan.map((entry) => entry.label)).toEqual(["48h Reminder", "3h Reminder"]);
+    expect(plan.map((entry) => entry.leadHours)).toEqual([48, 3]);
+    expect(plan.map((entry) => entry.status)).toEqual(["due", "scheduled"]);
+  });
+
+  it("uses the workspace offsets for due status, not the built-in ones", () => {
+    const custom = tuned({ leadHours: 48 });
+    const early = reminderPlan(job(), Date.parse("2026-05-01T07:00:00Z"), custom);
+    expect(early[0].status).toBe("scheduled");
+    const late = reminderPlan(job(), Date.parse("2026-05-01T08:30:00Z"), custom);
+    expect(late[0].status).toBe("due");
+    expect(late[0].dueAt).toBe("2026-05-01T08:00:00.000Z");
+    expect(reminderScheduleLabel(late[0].dueAt, Date.parse("2026-05-01T08:30:00Z"))).toBe(
+      "Today at 8:00 AM",
+    );
+  });
+
+  it("falls back to 24h and 2h when settings are unconfigured or malformed", () => {
+    expect(parseReminderSettings(null)).toEqual(DEFAULT_REMINDER_SETTINGS);
+    expect(parseReminderSettings({ first: { leadHours: "nope" } }).first.leadHours).toBe(24);
+    expect(parseReminderSettings({ second: { leadHours: 9999 } }).second.leadHours).toBe(168);
+    expect(reminderDueAt(job(), "pre_move_2h")).toBe("2026-05-03T06:00:00.000Z");
+  });
+
+  it("honours channel and tier switches", () => {
+    const custom = tuned({ sms: false }, { enabled: false, email: false });
+    expect(reminderChannels("pre_move_24h", custom)).toEqual({ sms: false, email: true });
+    expect(reminderChannels("pre_move_2h", custom)).toEqual({ sms: true, email: false });
+    const plan = reminderPlan(job(), Date.parse("2026-05-01T00:00:00Z"), custom);
+    expect(plan[0].enabled).toBe(true);
+    expect(plan[1].enabled).toBe(false);
+    expect(plan[0].channels).toEqual({ sms: false, email: true });
+  });
+
+  it("renders override copy with snake_case placeholders and keeps defaults elsewhere", () => {
+    const custom = tuned({
+      smsTemplate:
+        "Hi {customer_name}, window {arrival_window}, truck {truck_name}, live {tracking_link}.",
+    });
+    const template = reminderTemplate("pre_move_24h", custom);
+    expect(renderReminder(template.sms, context)).toBe(
+      "Hi Jane, window 8:00 AM – 9:00 AM, truck Truck 2 · ABC-123, live https://app.example.com/move/trk_demo.",
+    );
+    expect(template.emailSubject).toBe(PRE_MOVE_REMINDERS.pre_move_24h.emailSubject);
+    expect(reminderTemplate("pre_move_2h", custom).sms).toBe(PRE_MOVE_REMINDERS.pre_move_2h.sms);
+  });
+
+  it("rejects lead times that are out of range or out of order", () => {
+    expect(reminderSettingsInput(tuned({ leadHours: 3 }, { leadHours: 3 })).ok).toBe(false);
+    expect(reminderSettingsInput(tuned({ leadHours: 0 })).ok).toBe(false);
+    expect(reminderSettingsInput(tuned({ leadHours: 200 })).ok).toBe(false);
+    expect(reminderSettingsInput(null).ok).toBe(false);
+    const accepted = reminderSettingsInput(tuned({ leadHours: 72 }, { leadHours: 1 }));
+    expect(accepted.ok).toBe(true);
+    if (accepted.ok) expect(accepted.settings.first.leadHours).toBe(72);
+  });
+
+  it("titles the timeline event with the configured lead time", () => {
+    expect(reminderActivityTitle(record({ leadHours: 48 }))).toBe("48h Pre-Move Reminder Sent");
+    expect(reminderActivityTitle(record())).toBe("24h Pre-Move Reminder Sent");
   });
 });

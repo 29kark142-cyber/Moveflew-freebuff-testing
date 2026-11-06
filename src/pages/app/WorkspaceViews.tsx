@@ -72,6 +72,7 @@ import JobRoutePricing from "@/components/workspace/JobRoutePricing";
 import JobFieldProgress from "@/components/workspace/JobFieldProgress";
 import CrewShiftStatus from "@/components/workspace/CrewShiftStatus";
 import ReminderConfigModal from "@/components/workspace/ReminderConfigModal";
+import SettingsRemindersPage from "@/pages/app/SettingsRemindersPage";
 import QuoteDispatch from "@/components/workspace/QuoteDispatch";
 import { routeTravelPricing } from "@shared/route-pricing";
 import type { AddressRoute } from "@/lib/places";
@@ -4453,8 +4454,8 @@ export function InvoicesPage({ navigate }: PageProps) {
 
 export function SettingsPage({ role, navigate, integrationsTab, workspaceId = Number(getWorkspaceId()), appearanceWritable = true }: PageProps & { integrationsTab?: boolean; workspaceId?: number; appearanceWritable?: boolean }) {
   const { t } = useI18n();
-  const [tab, setTabState] = useState<"pricing" | "team" | "sequences" | "integrations" | "appearance" | "branding">(integrationsTab ? "integrations" : "pricing");
-  const setTab = (next: "pricing" | "team" | "sequences" | "integrations" | "appearance" | "branding") => {
+  const [tab, setTabState] = useState<"pricing" | "reminders" | "team" | "sequences" | "integrations" | "appearance" | "branding">(integrationsTab ? "integrations" : "pricing");
+  const setTab = (next: "pricing" | "reminders" | "team" | "sequences" | "integrations" | "appearance" | "branding") => {
     setTabState(next);
     navigate(next === "integrations" ? "/app/settings/integrations" : "/app/settings");
   };
@@ -4481,6 +4482,12 @@ export function SettingsPage({ role, navigate, integrationsTab, workspaceId = Nu
           onClick={() => setTab("pricing")}
         >
           {t("Pricing")}
+        </button>
+        <button
+          className={tab === "reminders" ? "active" : ""}
+          onClick={() => setTab("reminders")}
+        >
+          {t("Reminders")}
         </button>
         <button
           className={tab === "team" ? "active" : ""}
@@ -4513,6 +4520,8 @@ export function SettingsPage({ role, navigate, integrationsTab, workspaceId = Nu
         <AppearanceSettings role={role} workspaceId={workspaceId} writable={appearanceWritable} />
       ) : tab === "branding" ? (
         <BrandingSettings role={role} workspaceId={workspaceId} writable={appearanceWritable} />
+      ) : tab === "reminders" ? (
+        <SettingsRemindersPage role={role} />
       ) : tab === "pricing" ? (
         <><DepositSettings admin={role === "admin"} /><TravelSettings admin={role === "admin"} /><PricingSettings /></>
       ) : tab === "team" ? (

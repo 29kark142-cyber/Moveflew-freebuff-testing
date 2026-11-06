@@ -579,6 +579,25 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
   const [head, idRaw, sub] = parts;
   const id = idRaw ? Number(idRaw) : NaN;
 
+  // Workspace pre-move reminder rules: lead times, tiers, channels and copy overrides.
+  if (head === "reminder-settings" && (method === "GET" || method === "PUT")) {
+    if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
+      fail(403, "Only office staff can view pre-move reminder settings");
+    const ws = requireWs(ctx);
+    const { loadReminderSettings, saveReminderSettings } = await import("./reminders");
+    const { reminderSettingsInput } = await import("../shared/reminders");
+    const { smsConfigured, emailConfigured } = await import("./notifications");
+    const canEdit = ["admin", "office_admin"].includes(ctx.role ?? "");
+    const providers = { sms: smsConfigured(), email: emailConfigured() };
+    if (method === "GET")
+      return { settings: await loadReminderSettings(ctx.db, ws), canEdit, providers };
+    if (!canEdit) fail(403, "Only workspace managers can change pre-move reminder settings");
+    const parsed = reminderSettingsInput(await body());
+    if (!parsed.ok) throw new HttpError(400, parsed.error);
+    const settings = await saveReminderSettings(ctx.db, ws, ctx.userId, parsed.settings);
+    return { settings, canEdit, providers };
+  }
+
   if (head === "appearance" && (method === "GET" || method === "PUT")) {
     const ws = requireWs(ctx);
     let appearance;

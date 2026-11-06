@@ -48,10 +48,11 @@ export function reminderPickupAt(job: Record<string, unknown>): Date | null {
 export function reminderDueAt(
   job: Record<string, unknown>,
   kind: PreMoveReminderKind,
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
 ): string | null {
   const pickup = reminderPickupAt(job);
   if (!pickup) return null;
-  return new Date(pickup.getTime() - REMINDER_LEAD_HOURS[kind] * HOUR_MS).toISOString();
+  return new Date(pickup.getTime() - reminderLeadHours(kind, settings) * HOUR_MS).toISOString();
 }
 
 /** Decimal hours formatted the way the schedule and job sheet show them. */
@@ -145,10 +146,201 @@ export const PRE_MOVE_REMINDERS: Record<
   },
 };
 
+export type ReminderTierSettings = {
+  /** Off means the automated sweep never sends this reminder. */
+  enabled: boolean;
+  leadHours: number;
+  sms: boolean;
+  email: boolean;
+  /** Empty string keeps the built-in copy for that field. */
+  smsTemplate: string;
+  emailSubject: string;
+  emailBody: string;
+};
+
+export type ReminderSettings = { first: ReminderTierSettings; second: ReminderTierSettings };
+
+export const REMINDER_LEAD_HOURS_LIMITS = { min: 1, max: 168 } as const;
+
+/** Unconfigured workspaces keep the standard 24h and 2h schedule on both channels. */
+export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
+  first: {
+    enabled: true,
+    leadHours: 24,
+    sms: true,
+    email: true,
+    smsTemplate: "",
+    emailSubject: "",
+    emailBody: "",
+  },
+  second: {
+    enabled: true,
+    leadHours: 2,
+    sms: true,
+    email: true,
+    smsTemplate: "",
+    emailSubject: "",
+    emailBody: "",
+  },
+};
+
+/** Tokens the settings surface offers; snake_case aliases render from the camelCase context. */
+export const REMINDER_PLACEHOLDERS: Array<{ token: string; label: string }> = [
+  { token: "{customer_name}", label: "Customer name" },
+  { token: "{company_name}", label: "Company name" },
+  { token: "{company_phone}", label: "Company phone" },
+  { token: "{reference}", label: "Job reference" },
+  { token: "{move_date}", label: "Move date" },
+  { token: "{arrival_window}", label: "Arrival window" },
+  { token: "{crew_lead}", label: "Crew lead and phone" },
+  { token: "{origin}", label: "Pickup address" },
+  { token: "{destination}", label: "Drop-off address" },
+  { token: "{truck_name}", label: "Assigned truck" },
+  { token: "{prep_link}", label: "Move-day prep checklist link" },
+  { token: "{tracking_link}", label: "Live tracking link" },
+];
+
+const CONTEXT_ALIASES: Record<string, keyof ReminderContext> = {
+  customer_name: "customerName",
+  company_name: "companyName",
+  company_phone: "companyPhone",
+  move_date: "date",
+  arrival_window: "window",
+  crew_lead: "crewLead",
+  truck_name: "truck",
+  prep_link: "prepUrl",
+  tracking_link: "trackingUrl",
+};
+
+export function reminderTierKey(kind: PreMoveReminderKind): "first" | "second" {
+  return kind === "pre_move_24h" ? "first" : "second";
+}
+
+export function reminderTierSettings(
+  kind: PreMoveReminderKind,
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
+): ReminderTierSettings {
+  return settings[reminderTierKey(kind)];
+}
+
+export function reminderLeadHours(
+  kind: PreMoveReminderKind,
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
+): number {
+  return reminderTierSettings(kind, settings).leadHours;
+}
+
+export function reminderLabel(
+  kind: PreMoveReminderKind,
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
+): string {
+  return `${reminderLeadHours(kind, settings)}h Reminder`;
+}
+
+export function reminderWhenLabel(
+  kind: PreMoveReminderKind,
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
+): string {
+  const hours = reminderLeadHours(kind, settings);
+  return `${hours} ${hours === 1 ? "hour" : "hours"} before pickup`;
+}
+
+export function reminderChannels(
+  kind: PreMoveReminderKind,
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
+): { sms: boolean; email: boolean } {
+  const tier = reminderTierSettings(kind, settings);
+  return { sms: tier.sms, email: tier.email };
+}
+
+/** Workspace overrides per field; an empty override keeps the built-in copy. */
+export function reminderTemplate(
+  kind: PreMoveReminderKind,
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
+): { sms: string; emailSubject: string; emailBody: string } {
+  const builtIn = PRE_MOVE_REMINDERS[kind];
+  const tier = reminderTierSettings(kind, settings);
+  return {
+    sms: text(tier.smsTemplate) || builtIn.sms,
+    emailSubject: text(tier.emailSubject) || builtIn.emailSubject,
+    emailBody: text(tier.emailBody) || builtIn.emailBody,
+  };
+}
+
+const clampLeadHours = (value: unknown, fallback: number): number => {
+  const hours = Number(value);
+  if (!Number.isFinite(hours)) return fallback;
+  const rounded = Math.round(hours * 2) / 2;
+  return Math.min(
+    REMINDER_LEAD_HOURS_LIMITS.max,
+    Math.max(REMINDER_LEAD_HOURS_LIMITS.min, rounded),
+  );
+};
+
+function tierOf(value: unknown, fallback: ReminderTierSettings): ReminderTierSettings {
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const str = (key: string, max: number) =>
+    typeof raw[key] === "string" ? (raw[key] as string).slice(0, max) : "";
+  return {
+    enabled: typeof raw["enabled"] === "boolean" ? raw["enabled"] : fallback.enabled,
+    leadHours: clampLeadHours(raw["leadHours"], fallback.leadHours),
+    sms: typeof raw["sms"] === "boolean" ? raw["sms"] : fallback.sms,
+    email: typeof raw["email"] === "boolean" ? raw["email"] : fallback.email,
+    smsTemplate: str("smsTemplate", 2000),
+    emailSubject: str("emailSubject", 200),
+    emailBody: str("emailBody", 8000),
+  };
+}
+
+/** Tolerant reader: a missing or hand-edited setting falls back to the standard schedule. */
+export function parseReminderSettings(value: unknown): ReminderSettings {
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return {
+    first: tierOf(raw["first"], DEFAULT_REMINDER_SETTINGS.first),
+    second: tierOf(raw["second"], DEFAULT_REMINDER_SETTINGS.second),
+  };
+}
+
+export type ReminderSettingsInput =
+  { ok: true; settings: ReminderSettings } | { ok: false; error: string };
+
+/** Strict writer validation for the settings endpoint. */
+export function reminderSettingsInput(value: unknown): ReminderSettingsInput {
+  if (!value || typeof value !== "object")
+    return { ok: false, error: "Reminder settings are required" };
+  const raw = value as Record<string, unknown>;
+  for (const tier of ["first", "second"] as const) {
+    const label = tier === "first" ? "First" : "Second";
+    const entry = raw[tier];
+    if (!entry || typeof entry !== "object")
+      return { ok: false, error: `${label} reminder settings are missing` };
+    const row = entry as Record<string, unknown>;
+    const hours = Number(row["leadHours"]);
+    if (
+      !Number.isFinite(hours) ||
+      hours < REMINDER_LEAD_HOURS_LIMITS.min ||
+      hours > REMINDER_LEAD_HOURS_LIMITS.max
+    )
+      return {
+        ok: false,
+        error: `${label} reminder lead time must be between ${REMINDER_LEAD_HOURS_LIMITS.min} and ${REMINDER_LEAD_HOURS_LIMITS.max} hours`,
+      };
+    if (typeof row["enabled"] !== "boolean")
+      return { ok: false, error: `${label} reminder needs an on/off value` };
+    if (typeof row["sms"] !== "boolean" || typeof row["email"] !== "boolean")
+      return { ok: false, error: `${label} reminder needs SMS and email settings` };
+  }
+  const settings = parseReminderSettings(raw);
+  if (settings.first.leadHours <= settings.second.leadHours)
+    return { ok: false, error: "The first reminder must be sent earlier than the second" };
+  return { ok: true, settings };
+}
+
 /** Renders only documented tokens; unknown placeholders become an empty string. */
 export function renderReminder(template: string, context: ReminderContext): string {
-  return template.replace(/\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*\}/g, (_match, key: string) => {
-    const value = (context as unknown as Record<string, unknown>)[key];
+  return template.replace(/\{\s*([a-zA-Z][a-zA-Z0-9_]*)\s*\}/g, (_match, raw: string) => {
+    const key = (CONTEXT_ALIASES[raw] ?? raw) as keyof ReminderContext;
+    const value = context[key];
     return typeof value === "string" ? value : "";
   });
 }
@@ -169,6 +361,8 @@ export type PreMoveReminderRecord = {
   /** Set only when a provider accepted a message; log-only attempts keep this null. */
   sentAt: string | null;
   window: string;
+  /** Lead time in force when this dispatch happened, for the timeline title. */
+  leadHours?: number;
   attempts: ReminderAttempt[];
 };
 
@@ -203,6 +397,7 @@ export function reminderState(value: unknown): PreMoveReminderState {
       by: typeof entry["by"] === "string" ? entry["by"] : "",
       sentAt: typeof entry["sentAt"] === "string" ? entry["sentAt"] : null,
       window: typeof entry["window"] === "string" ? entry["window"] : "",
+      ...(Number(entry["leadHours"]) > 0 ? { leadHours: Number(entry["leadHours"]) } : {}),
       attempts: Array.isArray(entry["attempts"])
         ? (entry["attempts"] as unknown[])
             .map(attemptOf)
@@ -232,16 +427,25 @@ export type ReminderPlanEntry = {
   sentAt: string | null;
   status: ReminderPlanStatus;
   window: string;
+  /** False when the workspace turned this tier off; the sweep skips it. */
+  enabled: boolean;
+  leadHours: number;
+  channels: { sms: boolean; email: boolean };
   last: PreMoveReminderRecord | null;
 };
 
 /** When each reminder is due and whether it still needs sending. */
-export function reminderPlan(job: Record<string, unknown>, now = Date.now()): ReminderPlanEntry[] {
+export function reminderPlan(
+  job: Record<string, unknown>,
+  now = Date.now(),
+  settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS,
+): ReminderPlanEntry[] {
   const pickup = reminderPickupAt(job);
   const saved = reminderState(job["preMoveReminders"]);
   const window = reminderArrivalWindow(Number(job["startHour"]) || 0);
   return PRE_MOVE_REMINDER_KINDS.map((kind) => {
-    const dueAt = reminderDueAt(job, kind);
+    const tier = reminderTierSettings(kind, settings);
+    const dueAt = reminderDueAt(job, kind, settings);
     const record = saved[kind] ?? null;
     const dueMs = dueAt ? Date.parse(dueAt) : NaN;
     const status: ReminderPlanStatus = record?.sentAt
@@ -255,12 +459,15 @@ export function reminderPlan(job: Record<string, unknown>, now = Date.now()): Re
             : "scheduled";
     return {
       kind,
-      label: PRE_MOVE_REMINDERS[kind].label,
-      when: PRE_MOVE_REMINDERS[kind].when,
+      label: reminderLabel(kind, settings),
+      when: reminderWhenLabel(kind, settings),
       dueAt,
       sentAt: record?.sentAt ?? null,
       status,
       window,
+      enabled: tier.enabled,
+      leadHours: tier.leadHours,
+      channels: { sms: tier.sms, email: tier.email },
       last: record,
     };
   });
@@ -291,8 +498,11 @@ export function reminderScheduleLabel(dueAt: string | null, now = Date.now()): s
 }
 
 export function reminderActivityTitle(record: PreMoveReminderRecord): string {
-  const short = record.kind === "pre_move_24h" ? "24h" : "2h";
-  return `${short} Pre-Move Reminder ${record.sentAt ? "Sent" : "Logged"}`;
+  const hours =
+    record.leadHours && Number.isFinite(record.leadHours) && record.leadHours > 0
+      ? record.leadHours
+      : REMINDER_LEAD_HOURS[record.kind];
+  return `${hours}h Pre-Move Reminder ${record.sentAt ? "Sent" : "Logged"}`;
 }
 
 /** Arrival window, recipient and per-channel provider answers, capped for the timeline. */

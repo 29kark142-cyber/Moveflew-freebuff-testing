@@ -1,3 +1,4 @@
+import type { ReminderSettings } from "@shared/reminders";
 import type {
   CrewMember,
   Customer,
@@ -161,6 +162,19 @@ export const crm = {
   }) => crmFetch<Reminder>("/reminders", json("POST", value)),
   updateReminder: (id: number, value: { completed: boolean }) =>
     crmFetch<Reminder>(`/reminders/${id}`, json("PATCH", value)),
+  /** Workspace pre-move reminder rules used by the cron sweep and the job-sheet panel. */
+  reminderSettings: () =>
+    crmFetch<{
+      settings: ReminderSettings;
+      canEdit: boolean;
+      providers: { sms: boolean; email: boolean };
+    }>("/reminder-settings"),
+  saveReminderSettings: (settings: ReminderSettings) =>
+    crmFetch<{
+      settings: ReminderSettings;
+      canEdit: boolean;
+      providers: { sms: boolean; email: boolean };
+    }>("/reminder-settings", json("PUT", settings)),
   jobs: () => crmFetch<Job[]>("/jobs"),
   job: (id: number) => crmFetch<Job>(`/jobs/${id}`),
   createJob: (value: Record<string, unknown>) =>
