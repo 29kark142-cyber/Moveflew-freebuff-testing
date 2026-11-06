@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { PageLoader } from "@/components/loaders/MoveFlewLoader";
 
 const TrackingPage = lazy(() => import("@/pages/TrackingPage"));
 
@@ -29,8 +30,8 @@ export const Route = createFileRoute("/move/$jobId")({
 function TrackingRoute() {
   const { jobId } = Route.useParams();
   return (
-    <ClientOnly fallback={<p className="p-8 text-sm text-slate-500">Loading your move…</p>}>
-      <Suspense fallback={<p className="p-8 text-sm text-slate-500">Loading your move…</p>}>
+    <ClientOnly fallback={<PageLoader label="Loading your move…" />}>
+      <Suspense fallback={<PageLoader label="Loading your move…" />}>
         <TrackingPage token={jobId} />
       </Suspense>
     </ClientOnly>

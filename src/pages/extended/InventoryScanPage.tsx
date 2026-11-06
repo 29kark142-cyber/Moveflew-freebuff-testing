@@ -12,6 +12,7 @@ import {
 } from "@shared/inventory-scan";
 import { crmFetch } from "@/lib/crm";
 import CameraScanner from "@/components/workspace/CameraScanner";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { EmptyRows, PageHead } from "./operations-common";
 import "./inventory-scan.css";
 
@@ -184,7 +185,7 @@ export default function InventoryScanPage({ role }: ModuleProps) {
         </div>
 
         {loading ? (
-          <p className="ws-helper">Loading jobs…</p>
+          <SectionLoader label="Loading jobs…" />
         ) : error ? (
           <p className="ws-helper text-destructive" role="alert">
             {error}

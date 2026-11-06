@@ -1,6 +1,7 @@
-import { Camera, CheckCircle2, CircleAlert, LoaderCircle, Plus, Send } from "lucide-react";
+import { Camera, CheckCircle2, CircleAlert, Plus, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Brand from "@/components/Brand";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useI18n } from "@/lib/i18n";
 import "./claims-settlement.css";
@@ -185,7 +186,7 @@ export default function CustomerClaims() {
         <LanguageSwitcher />
       </header>
       <div className="claims-public-body">
-        {loading && <p className="claims-loading"><LoaderCircle className="ws-spin" size={18} /> {tx("Loading your claim…", "Загрузка претензии…")}</p>}
+        {loading && <SectionLoader label={tx("Loading your claim…", "Загрузка претензии…")} />}
         {!loading && error && <section className="claims-public-card claims-error"><CircleAlert size={28} /><h1>{tx("Claim link unavailable", "Ссылка на претензию недоступна")}</h1><p>{error}</p></section>}
         {!loading && data && (
           <>

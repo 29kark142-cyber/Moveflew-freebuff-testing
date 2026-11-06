@@ -5,7 +5,6 @@ import {
   CircleAlert,
   Download,
   FileText,
-  LoaderCircle,
   MapPin,
   RefreshCw,
   Upload,
@@ -13,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { portalApi, PortalApiError, type PortalJob, type PortalPayload } from "@/lib/portal-api";
 import "@/engagement.css";
 
@@ -202,9 +202,7 @@ export default function CustomerPortal({ params }: { params: { token: string } }
   if (loading)
     return (
       <Frame>
-        <p className="eg-public-loading">
-          <LoaderCircle className="ws-spin" size={18} /> Loading your portal…
-        </p>
+        <SectionLoader label="Loading your portal…" />
       </Frame>
     );
   if (error && !data)

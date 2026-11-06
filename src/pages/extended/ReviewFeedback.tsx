@@ -2,6 +2,7 @@ import { CheckCircle2, CircleAlert, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { CrmApiError } from "@/lib/crm";
 import { useI18n } from "@/lib/i18n";
 import { engage, type PublicReview } from "@/lib/engage-api";
@@ -73,7 +74,7 @@ export default function ReviewFeedback({
   if (loading)
     return (
       <ReviewFrame>
-        <p className="eg-public-loading">{t("Loading feedback form…")}</p>
+        <SectionLoader label={t("Loading feedback form…")} />
       </ReviewFrame>
     );
   if (error && !review)

@@ -3,6 +3,7 @@ import { Link } from "@/lib/wouter";
 import { toast } from "sonner";
 import { ArrowLeft, CalendarClock, Loader2, Mail, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { crmFetch } from "@/lib/crm";
 import { money } from "@shared/crm";
 import {
@@ -153,9 +154,7 @@ export default function StorageBillingPage({ role }: { role: string }) {
       )}
 
       {!overview ? (
-        <div className="ws-card ws-card-pad flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 size={16} className="animate-spin" /> Loading storage billing…
-        </div>
+        <SectionLoader label="Loading storage billing…" />
       ) : (
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -17,6 +17,7 @@ import type {
   WarehouseResolveResult,
 } from "@shared/warehouse";
 import { crmFetch } from "@/lib/crm";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { useI18n } from "@/lib/i18n";
 import { CoreCard, CoreNotice, CorePage } from "./CoreUI";
 import "./scanner.css";
@@ -582,7 +583,7 @@ export default function ScannerPage({ role }: ModuleProps) {
         </CoreCard>
 
         <CoreCard title={tx("Recent scanner audit", "Последний журнал сканера")}>
-          {loading ? <p className="core-muted">{tx("Loading saved warehouse records…", "Загрузка сохранённых складских записей…")}</p> : !data?.audits.length ? <p className="core-empty">{tx("No camera or manual scan activity has been recorded.", "Нет сохранённых действий камеры или ручного сканирования.")}</p> : (
+          {loading ? <SectionLoader label={tx("Loading saved warehouse records…", "Загрузка сохранённых складских записей…")} /> : !data?.audits.length ? <p className="core-empty">{tx("No camera or manual scan activity has been recorded.", "Нет сохранённых действий камеры или ручного сканирования.")}</p> : (
             <div className="core-scroll"><table className="core-table"><thead><tr><th>{tx("Event", "Событие")}</th><th>{tx("Target", "Цель")}</th><th>{tx("Quantity", "Количество")}</th><th>{tx("Time", "Время")}</th></tr></thead><tbody>{data.audits.map(audit => <tr key={audit.id}><td>{audit.eventType}</td><td>{audit.targetKind ? `${audit.targetKind} #${audit.targetId}` : "—"}</td><td>{audit.quantity ?? "—"}</td><td>{new Date(audit.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>
           )}
         </CoreCard>

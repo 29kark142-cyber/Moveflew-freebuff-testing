@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { PageLoader } from "@/components/loaders/MoveFlewLoader";
 
 const ReviewFeedback = lazy(() => import("@/pages/extended/ReviewFeedback"));
 
@@ -18,8 +19,8 @@ export const Route = createFileRoute("/review/$token")({
 function ReviewRoute() {
   const { token } = Route.useParams();
   return (
-    <ClientOnly fallback={<p className="p-8">Loading feedback form…</p>}>
-      <Suspense fallback={<p className="p-8">Loading feedback form…</p>}>
+    <ClientOnly fallback={<PageLoader label="Loading feedback form…" />}>
+      <Suspense fallback={<PageLoader label="Loading feedback form…" />}>
         <ReviewFeedback params={{ token }} />
       </Suspense>
     </ClientOnly>

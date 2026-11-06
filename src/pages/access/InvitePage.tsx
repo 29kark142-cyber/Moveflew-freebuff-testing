@@ -10,6 +10,7 @@ import {
   saveInviteIntent,
 } from "@/lib/invite-intent";
 import { useI18n } from "@/lib/i18n";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { selectEnrollment, workspaceDestination } from "./access-flow";
 import EmailVerificationRequest from "./EmailVerificationRequest";
 import "./access.css";
@@ -143,7 +144,7 @@ export default function InvitePage() {
           )}
         </h1>
         {loading && (
-          <p>{tx("Checking this invitation…", "Проверяем приглашение…")}</p>
+          <SectionLoader label={tx("Checking this invitation…", "Проверяем приглашение…")} />
         )}
         {!loading && preview && (
           <>

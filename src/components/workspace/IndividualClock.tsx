@@ -1,6 +1,7 @@
 import { Clock3, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { crmFetch } from "@/lib/crm";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { useI18n } from "@/lib/i18n";
 
 type Clock = {
@@ -82,7 +83,7 @@ export function IndividualClock({ jobId }: { jobId: number }) {
   };
 
   if (loading)
-    return <div className="ws-loading">{t("Loading individual clock…")}</div>;
+    return <SectionLoader label={t("Loading individual clock…")} />;
   if (!state?.eligible) return null;
   const activeHere =
     state.activeClock?.jobId === jobId ? state.activeClock : null;

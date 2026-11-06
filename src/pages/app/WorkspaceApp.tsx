@@ -15,7 +15,8 @@ import CopilotAssistant from "@/components/workspace/CopilotAssistant";
 import { useAuth } from "@/_core/hooks/useAuth";
 import WorkspaceShell from "@/components/workspace/WorkspaceShell";
 import AppearanceProvider from "@/components/workspace/AppearanceProvider";
-import { ErrorNotice, LoadingBlock } from "@/components/workspace/WorkspaceUI";
+import { ErrorNotice } from "@/components/workspace/WorkspaceUI";
+import { GlobalLoader, PageReveal } from "@/components/loaders/MoveFlewLoader";
 import {
   crm,
   CrmApiError,
@@ -175,122 +176,129 @@ export default function WorkspaceApp() {
   const createWorkspace = async (workspace: Workspace) => {
     setWorkspaceId(workspace.id);
     await load();
-  };
+  };  const booting = authLoading || !user || loading;
+  const [bootVisible, setBootVisible] = useState(true);
+  const finishBoot = useCallback(() => setBootVisible(false), []);
 
-  if (authLoading || (!user && !error))
-    return (
-      <div className="workspace">
-        <LoadingBlock label={t("Checking your sign-in…")} />
-      </div>
-    );
-  if (!user)
-    return (
-      <div className="workspace">
-        <LoadingBlock label={t("Opening sign-in…")} />
-      </div>
-    );
-  if (loading)
-    return (
-      <div className="workspace">
-        <LoadingBlock label={t("Opening your workspace…")} />
-      </div>
-    );
-  if (error)
-    return (
-      <div className="workspace">
-        <main className="ws-content">
-          <ErrorNotice error={error} retry={() => void load()} />
-        </main>
-      </div>
-    );
-  if (!bootstrap || !bootstrap.workspace)
-    return <CreateWorkspace onCreated={createWorkspace} />;
+  useEffect(() => {
+    if (booting) setBootVisible(true);
+  }, [booting]);
 
-  const ws = bootstrap.workspace;
-  const needsSetup = ws.role === "admin" && !ws.onboardingCompleted;
-  const pageProps = {
-    role: bootstrap.workspace.role,
-    navigate,
-    path: location,
-  };
-  let page: React.ReactNode;
-  const ExpandedPage = expandedPages[location];
-  // The dispatch board shares the calendar's live job list, so booked jobs appear immediately.
-  if (location === "/app/onboarding" || needsSetup)
-    page = <OnboardingWizard workspaceId={ws.id} onDone={async () => { await load(); navigate("/app/dashboard"); }} />;
-  else if (location === "/app/settings/billing") page = <BillingPanel workspace={ws} />;
-  else if (location === "/app/schedule") page = <SchedulePage {...pageProps} />;
-  else if (location === "/app/dispatch") page = <DispatchPage {...pageProps} />;
-  else if (location === '/app/reports') page = <OperationalReports workspaceName={ws.name} />;
-  else if (location === '/app/tariffs') page = <WorkspaceTariffs workspaceName={ws.name} role={ws.role} readOnly={isReadOnly(ws.subscriptionStatus)} />;
-  else if (location === '/app/storage/billing') page = <StorageBillingPage role={ws.role} />;
-  else if (location === '/app/storage') page = <StorageVaultPage role={ws.role} />;
-  else if (isNativeModule(location)) page = <WorkspaceModules path={location} workspaceName={ws.name} navigate={navigate} />;
-  else if (ExpandedPage) page = <ExpandedPage {...pageProps} />;
-  else if (/^\/app\/workers\/\d+\/?$/.test(location))
-    page = <WorkerDetailPage {...pageProps} />;
-  else if (/^\/app\/jobs\/\d+\/bol\/?$/.test(location))
-    page = <DocumentPage {...pageProps} />;
-  else if (location === "/app/dashboard")
-    page = <DashboardPage {...pageProps} />;
-  else if (location === "/app/leads") page = <LeadsPage {...pageProps} />;
-  else if (/^\/app\/estimates\/\d+\/?$/.test(location))
-    page = <EstimateWizardPage {...pageProps} />;
-  else if (location === "/app/estimates/new")
-    page = <EstimateWizardPage {...pageProps} />;
-  else if (location === "/app/estimates")
-    page = <EstimatesPage {...pageProps} />;
-  else if (location.match(/^\/app\/jobs\/\d+$/))
-    page = <JobDetailPage {...pageProps} />;
-  else if (location === "/app/jobs") page = <JobsPage {...pageProps} />;
-  else if (location === "/app/calendar") page = <DispatchPage {...pageProps} />;
-  else if (location === "/app/fleet" || location === "/app/crew")
-    page = <FleetPage {...pageProps} />;
-  else if (location === "/app/field")
-    page =
-      bootstrap.workspace.role === "estimator" ? (
-        <div className="ws-alert">
-          {t(
-            "Field job sheets are available to dispatch, office admins, and assigned crew members."
-          )}
+  function workspaceContent(): React.ReactNode {
+    if (!user) return null;
+    if (error)
+      return (
+        <div className="workspace">
+          <main className="ws-content">
+            <ErrorNotice error={error} retry={() => void load()} />
+          </main>
         </div>
-      ) : (
-        <MobileField role={bootstrap.workspace.role} userId={user.id} workspaceId={ws.id} />
       );
-  else if (location === "/app/invoices") page = <InvoicesPage {...pageProps} />;
-  else if (location === "/app/settings/pricing")
-    page = <SurgePricingPage role={ws.role} navigate={navigate} />;
-  else if (location === "/app/settings") page = <SettingsPage {...pageProps} workspaceId={ws.id} appearanceWritable={!isReadOnly(ws.subscriptionStatus)} />;
-  else if (location === "/app/settings/integrations")
-    page = <SettingsPage key="integrations" {...pageProps} integrationsTab workspaceId={ws.id} appearanceWritable={!isReadOnly(ws.subscriptionStatus)} />;
-  else page = <DashboardPage {...pageProps} />;
+    if (!bootstrap || !bootstrap.workspace)
+      return <CreateWorkspace onCreated={createWorkspace} />;
+
+    const ws = bootstrap.workspace;
+    const needsSetup = ws.role === "admin" && !ws.onboardingCompleted;
+    const pageProps = {
+      role: ws.role,
+      navigate,
+      path: location,
+    };
+    let page: React.ReactNode;
+    const ExpandedPage = expandedPages[location];
+    // The dispatch board shares the calendar's live job list, so booked jobs appear immediately.
+    if (location === "/app/onboarding" || needsSetup)
+      page = <OnboardingWizard workspaceId={ws.id} onDone={async () => { await load(); navigate("/app/dashboard"); }} />;
+    else if (location === "/app/settings/billing") page = <BillingPanel workspace={ws} />;
+    else if (location === "/app/schedule") page = <SchedulePage {...pageProps} />;
+    else if (location === "/app/dispatch") page = <DispatchPage {...pageProps} />;
+    else if (location === '/app/reports') page = <OperationalReports workspaceName={ws.name} />;
+    else if (location === '/app/tariffs') page = <WorkspaceTariffs workspaceName={ws.name} role={ws.role} readOnly={isReadOnly(ws.subscriptionStatus)} />;
+    else if (location === '/app/storage/billing') page = <StorageBillingPage role={ws.role} />;
+    else if (location === '/app/storage') page = <StorageVaultPage role={ws.role} />;
+    else if (isNativeModule(location)) page = <WorkspaceModules path={location} workspaceName={ws.name} navigate={navigate} />;
+    else if (ExpandedPage) page = <ExpandedPage {...pageProps} />;
+    else if (/^\/app\/workers\/\d+\/?$/.test(location))
+      page = <WorkerDetailPage {...pageProps} />;
+    else if (/^\/app\/jobs\/\d+\/bol\/?$/.test(location))
+      page = <DocumentPage {...pageProps} />;
+    else if (location === "/app/dashboard")
+      page = <DashboardPage {...pageProps} />;
+    else if (location === "/app/leads") page = <LeadsPage {...pageProps} />;
+    else if (/^\/app\/estimates\/\d+\/?$/.test(location))
+      page = <EstimateWizardPage {...pageProps} />;
+    else if (location === "/app/estimates/new")
+      page = <EstimateWizardPage {...pageProps} />;
+    else if (location === "/app/estimates") page = <EstimatesPage {...pageProps} />;
+    else if (location.match(/^\/app\/jobs\/\d+$/))
+      page = <JobDetailPage {...pageProps} />;
+    else if (location === "/app/jobs") page = <JobsPage {...pageProps} />;
+    else if (location === "/app/calendar") page = <DispatchPage {...pageProps} />;
+    else if (location === "/app/fleet" || location === "/app/crew")
+      page = <FleetPage {...pageProps} />;
+    else if (location === "/app/field")
+      page =
+        ws.role === "estimator" ? (
+          <div className="ws-alert">
+            {t(
+              "Field job sheets are available to dispatch, office admins, and assigned crew members."
+            )}
+          </div>
+        ) : (
+          <MobileField role={ws.role} userId={user.id} workspaceId={ws.id} />
+        );
+    else if (location === "/app/invoices") page = <InvoicesPage {...pageProps} />;
+    else if (location === "/app/settings/pricing")
+      page = <SurgePricingPage role={ws.role} navigate={navigate} />;
+    else if (location === "/app/settings") page = <SettingsPage {...pageProps} workspaceId={ws.id} appearanceWritable={!isReadOnly(ws.subscriptionStatus)} />;
+    else if (location === "/app/settings/integrations")
+      page = <SettingsPage key="integrations" {...pageProps} integrationsTab workspaceId={ws.id} appearanceWritable={!isReadOnly(ws.subscriptionStatus)} />;
+    else page = <DashboardPage {...pageProps} />;
+
+    return (
+      <AppearanceProvider key={`${user.id}-${ws.id}`} userId={user.id} workspaceId={ws.id} initial={ws.appearance}><WorkspaceShell
+        autoStart={!needsSetup}
+        path={location}
+        navigate={navigate}
+        user={user}
+        role={ws.role}
+        workspace={ws}
+        workspaces={bootstrap.workspaces}
+        onWorkspace={id => void chooseWorkspace(id)}
+        onLogout={() => void logout()}
+      >
+        {isReadOnly(ws.subscriptionStatus) && (
+          <div className="ws-alert" role="alert">
+            {t("This workspace is read-only because the subscription is past due or canceled. Your records are safe.")}{" "}
+            {ws.role === "admin" && <button className="ws-btn" onClick={() => navigate("/app/settings/billing")}>{t("Update payment details")}</button>}
+          </div>
+        )}
+        {ws.pricingDefaults && !needsSetup && (location === "/app/dashboard" || location === "/app/estimates/new") && (
+          <div className="ws-alert">
+            {t(PRICING_REMINDER)}{" "}
+            {["admin", "office_admin"].includes(ws.role) && <button className="ws-btn" onClick={() => navigate("/app/settings")}>{t("Open pricing settings")}</button>}
+          </div>
+        )}
+        <PageReveal key={`${ws.id}-${location}`}>{page}</PageReveal>
+        <CopilotAssistant key={`copilot-${ws.id}`} path={location} navigate={navigate} />
+      </WorkspaceShell></AppearanceProvider>
+    );
+  }
+
+  const label = authLoading
+    ? t("Checking your sign-in…")
+    : !user
+      ? t("Opening sign-in…")
+      : loading
+        ? t("Opening your workspace…")
+        : t("Preparing your workspace…");
 
   return (
-    <AppearanceProvider key={`${user.id}-${ws.id}`} userId={user.id} workspaceId={ws.id} initial={ws.appearance}><WorkspaceShell
-      autoStart={!needsSetup}
-      path={location}
-      navigate={navigate}
-      user={user}
-      role={bootstrap.workspace.role}
-      workspace={bootstrap.workspace}
-      workspaces={bootstrap.workspaces}
-      onWorkspace={id => void chooseWorkspace(id)}
-      onLogout={() => void logout()}
-    >
-      {isReadOnly(ws.subscriptionStatus) && (
-        <div className="ws-alert" role="alert">
-          {t("This workspace is read-only because the subscription is past due or canceled. Your records are safe.")}{" "}
-          {ws.role === "admin" && <button className="ws-btn" onClick={() => navigate("/app/settings/billing")}>{t("Update payment details")}</button>}
-        </div>
+    <>
+      {booting ? null : workspaceContent()}
+      {(bootVisible || booting) && (
+        <GlobalLoader label={label} done={!booting} onExited={finishBoot} />
       )}
-      {ws.pricingDefaults && !needsSetup && (location === "/app/dashboard" || location === "/app/estimates/new") && (
-        <div className="ws-alert">
-          {t(PRICING_REMINDER)}{" "}
-          {["admin", "office_admin"].includes(ws.role) && <button className="ws-btn" onClick={() => navigate("/app/settings")}>{t("Open pricing settings")}</button>}
-        </div>
-      )}
-      <div key={`${bootstrap.workspace.id}-${location}`}>{page}</div>
-      <CopilotAssistant key={`copilot-${bootstrap.workspace.id}`} path={location} navigate={navigate} />
-    </WorkspaceShell></AppearanceProvider>
+    </>
   );
 }

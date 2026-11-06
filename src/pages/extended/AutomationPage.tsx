@@ -5,7 +5,6 @@ import {
   CirclePlay,
   ExternalLink,
   FileText,
-  LoaderCircle,
   MailX,
   RefreshCw,
   ShieldCheck,
@@ -14,6 +13,7 @@ import {
 import { useState } from "react";
 import type { ModuleProps } from "@shared/expansion";
 import { ErrorNotice, useRemote } from "@/components/workspace/WorkspaceUI";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { automation, type AutomationStatus } from "@/lib/automation-api";
 import { useI18n } from "@/lib/i18n";
 
@@ -133,13 +133,12 @@ export function AutomationPage({ role, navigate, path }: ModuleProps) {
       </header>
 
       {loading && (
-        <div className="automation-loading">
-          <LoaderCircle size={18} className="ws-spin" />
-          {tx(
+        <SectionLoader
+          label={tx(
             "Loading automation configuration…",
             "Загрузка конфигурации автоматизации…"
           )}
-        </div>
+        />
       )}
       {Boolean(error) && !data && (
         <ErrorNotice error={error} retry={() => void refresh()} />

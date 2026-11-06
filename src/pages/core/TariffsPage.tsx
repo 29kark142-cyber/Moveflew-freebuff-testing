@@ -8,6 +8,7 @@ import type {
   TariffRatingInput,
 } from "@shared/tariffs";
 import { crmFetch } from "@/lib/crm";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { useI18n } from "@/lib/i18n";
 import { CoreCard, CoreNotice, CorePage } from "./CoreUI";
 import "./tariffs.css";
@@ -447,7 +448,7 @@ export default function TariffsPage({ role, navigate }: ModuleProps) {
         <div className="core-grid tariffs-profile-grid">
           <CoreCard title={tx("Imported tariff profiles", "Импортированные тарифные профили")}>
             {loading ? (
-              <p className="core-muted">{tx("Loading profiles…", "Загрузка профилей…")}</p>
+              <SectionLoader label={tx("Loading profiles…", "Загрузка профилей…")} />
             ) : !data?.profiles.length ? (
               <p className="core-empty">
                 {tx(

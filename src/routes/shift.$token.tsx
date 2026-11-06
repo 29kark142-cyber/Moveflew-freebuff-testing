@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { PageLoader } from "@/components/loaders/MoveFlewLoader";
 const ShiftResponsePage = lazy(() => import("@/pages/ShiftResponsePage"));
 export const Route = createFileRoute("/shift/$token")({
   head: () => ({
@@ -15,8 +16,8 @@ export const Route = createFileRoute("/shift/$token")({
 function ShiftRoute() {
   const { token } = Route.useParams();
   return (
-    <ClientOnly fallback={<p className="p-8">Loading your shift…</p>}>
-      <Suspense fallback={<p className="p-8">Loading your shift…</p>}>
+    <ClientOnly fallback={<PageLoader label="Loading your shift…" />}>
+      <Suspense fallback={<PageLoader label="Loading your shift…" />}>
         <ShiftResponsePage token={token} />
       </Suspense>
     </ClientOnly>

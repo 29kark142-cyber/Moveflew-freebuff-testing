@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { ClientOnly } from '@tanstack/react-router';
+import { PageLoader } from '@/components/loaders/MoveFlewLoader';
 const ProposalPage = lazy(() => import('@/pages/app/ProposalPage'));
 export const Route = createFileRoute('/proposal/$token')({
   head:()=>({meta:[
@@ -15,4 +16,13 @@ export const Route = createFileRoute('/proposal/$token')({
   ]}),
   component:ProposalRoute,
 });
-function ProposalRoute(){const {token}=Route.useParams();return <ClientOnly fallback={<p className="p-8">Loading proposal…</p>}><Suspense fallback={<p className="p-8">Loading proposal…</p>}><ProposalPage token={token}/></Suspense></ClientOnly>;}
+function ProposalRoute() {
+  const { token } = Route.useParams();
+  return (
+    <ClientOnly fallback={<PageLoader label="Loading proposal…" />}>
+      <Suspense fallback={<PageLoader label="Loading proposal…" />}>
+        <ProposalPage token={token} />
+      </Suspense>
+    </ClientOnly>
+  );
+}

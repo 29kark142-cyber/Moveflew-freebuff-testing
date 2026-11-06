@@ -1,15 +1,11 @@
-import { AlertCircle, Inbox, LoaderCircle, X } from "lucide-react";
+import { AlertCircle, Inbox, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { getLocale, useI18n } from "@/lib/i18n";
 
 export function LoadingBlock({ label }: { label?: string }) {
   const { t } = useI18n();
-  return (
-    <div className="ws-loading">
-      <LoaderCircle size={18} className="ws-spin" />{" "}
-      {t(label || "Loading workspace…")}
-    </div>
-  );
+  return <SectionLoader label={t(label || "Loading workspace…")} />;
 }
 
 export function ErrorNotice({

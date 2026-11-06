@@ -10,12 +10,12 @@ import {
   PackageCheck,
   PackageOpen,
   Phone,
-  RefreshCw,
   Truck,
   Users,
   Warehouse,
 } from "lucide-react";
 import RouteMap from "@/components/tracking/RouteMap";
+import { PageLoader } from "@/components/loaders/MoveFlewLoader";
 import { readTracking } from "@/lib/tracking-api";
 import { DEMO_TRACKING_TOKEN, demoTrackingPayload } from "@/lib/tracking-demo";
 import {
@@ -182,13 +182,7 @@ export default function TrackingPage({ token }: { token: string }) {
   }, [payload]);
 
   if (loading) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-slate-50 px-6">
-        <p className="flex items-center gap-2 text-sm text-slate-500">
-          <RefreshCw className="h-4 w-4 animate-spin" /> Loading your move…
-        </p>
-      </div>
-    );
+    return <PageLoader label="Loading your move…" />;
   }
 
   if (missing || !payload) {

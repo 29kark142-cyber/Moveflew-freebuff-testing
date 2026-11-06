@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, CircleAlert, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { crm } from "@/lib/crm";
 import { money, type Pricing } from "@shared/crm";
 import {
@@ -63,11 +64,7 @@ export default function SurgePricingPage({
   }, [load]);
 
   if (loading) {
-    return (
-      <section className="ws-settings-section ws-card ws-card-pad">
-        <p className="ws-helper">Loading surge pricing…</p>
-      </section>
-    );
+    return <SectionLoader label="Loading surge pricing…" />;
   }
 
   if (!pricing) {

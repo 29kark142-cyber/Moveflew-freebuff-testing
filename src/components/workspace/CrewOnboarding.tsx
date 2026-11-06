@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, BriefcaseBusiness, CircleAlert, LoaderCircle, Mail, Phone, ShieldCheck, User, UsersRound } from "lucide-react";
 import Brand from "@/components/Brand";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,7 +85,7 @@ export default function CrewOnboarding({ token }: { token: string }) {
             {info?.valid && <p className="mb-0 text-sm leading-6 text-muted-foreground">You've been invited to join <strong className="font-semibold text-foreground">{info.workspace_name}</strong> as a crew member.</p>}
           </header>
 
-          {info === undefined && <div role="status" className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" />Checking your invitation…</div>}
+          {info === undefined && <SectionLoader className="min-h-32" label="Checking your invitation…" />}
           {info !== undefined && !info?.valid && <div className="space-y-5 text-center">
             <CircleAlert className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
             <p role="alert" className="text-sm leading-6 text-muted-foreground">{message || (info ? "This invitation has expired, was revoked, or has already been used. Ask your manager for a new link." : "This invitation link is not valid. Ask your manager for a new one.")}</p>

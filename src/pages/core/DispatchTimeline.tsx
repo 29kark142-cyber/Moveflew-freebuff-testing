@@ -9,6 +9,7 @@ import type {
   TimelineWarningCode,
 } from "@shared/timeline";
 import { crmFetch } from "@/lib/crm";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { useI18n } from "@/lib/i18n";
 import { CoreCard, CoreNotice, CorePage } from "./CoreUI";
 import "./dispatch-timeline.css";
@@ -267,14 +268,12 @@ export default function DispatchTimeline({ role }: ModuleProps) {
       {error && <CoreNotice tone="error">{error}</CoreNotice>}
       {notice && <CoreNotice tone="success">{notice}</CoreNotice>}
       {loading ? (
-        <CoreCard>
-          <p className="core-muted">
-            {tx(
-              "Loading dispatch timeline…",
-              "Загрузка графика диспетчеризации…"
-            )}
-          </p>
-        </CoreCard>
+        <SectionLoader
+          label={tx(
+            "Loading dispatch timeline…",
+            "Загрузка графика диспетчеризации…"
+          )}
+        />
       ) : !timeline ? null : (
         <>
           <CoreCard title={tx("Unassigned backlog", "Неназначенные заказы")}>

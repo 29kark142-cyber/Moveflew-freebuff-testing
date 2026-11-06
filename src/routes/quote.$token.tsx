@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { PageLoader } from "@/components/loaders/MoveFlewLoader";
 const QuotePage = lazy(() => import("@/pages/QuotePage"));
 export const Route = createFileRoute("/quote/$token")({
   head: () => ({
@@ -19,8 +20,8 @@ export const Route = createFileRoute("/quote/$token")({
 function QuoteRoute() {
   const { token } = Route.useParams();
   return (
-    <ClientOnly fallback={<p className="p-8">Loading quote…</p>}>
-      <Suspense fallback={<p className="p-8">Loading quote…</p>}>
+    <ClientOnly fallback={<PageLoader label="Loading quote…" />}>
+      <Suspense fallback={<PageLoader label="Loading quote…" />}>
         <QuotePage token={token} />
       </Suspense>
     </ClientOnly>

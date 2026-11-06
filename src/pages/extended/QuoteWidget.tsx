@@ -2,6 +2,7 @@ import { CheckCircle2, CircleAlert, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { CrmApiError } from "@/lib/crm";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -74,7 +75,7 @@ export default function QuoteWidget({ params }: { params: { token: string } }) {
   if (loading)
     return (
       <PublicFrame>
-        <p className="eg-public-loading">{t("Loading quote request…")}</p>
+        <SectionLoader label={t("Loading quote request…")} />
       </PublicFrame>
     );
   if (error && !settings)

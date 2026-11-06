@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import { crm } from "@/lib/crm";
 import {
   DEFAULT_REMINDER_SETTINGS,
@@ -147,11 +148,7 @@ export default function SettingsRemindersPage({ role }: { role: string }) {
   };
 
   if (loading) {
-    return (
-      <section className="ws-settings-section ws-card ws-card-pad">
-        <p className="ws-helper">Loading pre-move reminder settings…</p>
-      </section>
-    );
+    return <SectionLoader label="Loading pre-move reminder settings…" />;
   }
 
   return (

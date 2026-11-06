@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CalendarClock, Camera, Loader2, Plus, ReceiptText, ScanLine, Trash2, Warehouse, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from "@/components/loaders/MoveFlewLoader";
 import CameraScanner from "@/components/workspace/CameraScanner";
 import { crmFetch } from "@/lib/crm";
 import { shrinkImage } from "@/lib/photo";
@@ -451,11 +452,7 @@ export default function StorageVaultPage({ role }: { role: string }) {
         </section>
       )}
 
-      {vaults === null && !error && (
-        <p className="ws-helper">
-          <Loader2 className="inline h-4 w-4 animate-spin" /> Loading vaults…
-        </p>
-      )}
+      {vaults === null && !error && <SectionLoader label="Loading vaults…" />}
 
       {vaults && vaults.length === 0 && (
         <section className="ws-card ws-card-pad text-center">

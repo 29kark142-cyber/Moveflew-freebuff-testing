@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { PageLoader } from "@/components/loaders/MoveFlewLoader";
 
 const CustomerPortal = lazy(() => import("@/pages/extended/CustomerPortal"));
 
@@ -22,8 +23,8 @@ export const Route = createFileRoute("/portal/$token")({
 function PortalRoute() {
   const { token } = Route.useParams();
   return (
-    <ClientOnly fallback={<p className="p-8">Loading your portal…</p>}>
-      <Suspense fallback={<p className="p-8">Loading your portal…</p>}>
+    <ClientOnly fallback={<PageLoader label="Loading your portal…" />}>
+      <Suspense fallback={<PageLoader label="Loading your portal…" />}>
         <CustomerPortal params={{ token }} />
       </Suspense>
     </ClientOnly>
