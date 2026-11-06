@@ -48,6 +48,8 @@ export type Member = {
   name: string;
   email: string;
   role: WorkspaceRole;
+  /** True for the signed-in member; role changes are blocked in the UI. */
+  isSelf: boolean;
 };
 export type Payment = Record<string, unknown> & {
   id?: number;

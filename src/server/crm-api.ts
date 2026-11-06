@@ -18,6 +18,7 @@ import { pricingSchema, canEditTariffs } from "../shared/workspace-tariffs";
 import { operationalReport } from "../shared/workspace-reports";
 import { travelSettingsSchema } from "../lib/travel-rules";
 import { brandingSchema, isStorageImage, normalizeDomain, parseBranding } from "../shared/branding";
+import { isWorkspaceRole, memberRoleChangeViolation } from "../shared/membership";
 import {
   creditBalance,
   includedSurveyCredits,
@@ -1242,30 +1243,61 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
   if (head === "members") {
     const ws = requireWs(ctx);
     if (method === "GET") {
-      const { data } = await ctx.db
+      const { data, error } = await ctx.db
         .from("workspace_members")
         .select("id,user_id,name,email,role")
         .eq("workspace_id", ws);
+      if (error) dbFail(500, error);
       return (data ?? []).map((m) => ({
         id: m.id,
         userId: 0,
         name: m.name,
         email: m.email,
         role: m.role,
+        isSelf: m.user_id === ctx.userId,
       }));
     }
     if (method === "PATCH" && id) {
+      if (ctx.role !== "admin")
+        fail(403, "Only an Admin can change member roles.");
       const { role } = (await body()) as { role?: unknown };
-      if (typeof role !== "string") fail(400, "Role is required");
+      if (!isWorkspaceRole(role)) return fail(400, "Choose a valid workspace role.");
+      const { data: target, error: targetError } = await ctx.db
+        .from("workspace_members")
+        .select("user_id,role")
+        .eq("id", id)
+        .eq("workspace_id", ws)
+        .maybeSingle();
+      if (targetError) dbFail(403, targetError);
+      if (!target) return fail(404, "Member not found");
+      let activeAdminCount = 0;
+      if (target.role === "admin" && role !== "admin") {
+        const { count, error } = await ctx.db
+          .from("workspace_members")
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", ws)
+          .eq("role", "admin");
+        if (error) dbFail(500, error);
+        activeAdminCount = count ?? 0;
+      }
+      const violation = memberRoleChangeViolation({
+        actorRole: ctx.role,
+        actorUserId: ctx.userId,
+        targetUserId: target.user_id,
+        currentRole: target.role,
+        nextRole: role,
+        activeAdminCount,
+      });
+      if (violation) fail(violation.status, violation.message);
       const { data, error } = await ctx.db
         .from("workspace_members")
-        .update({ role: role as string })
+        .update({ role })
         .eq("id", id)
         .eq("workspace_id", ws)
         .select("id,name,email,role")
         .single();
       if (error) dbFail(403, error);
-      return { ...data, userId: 0 };
+      return { ...data, userId: 0, isSelf: target.user_id === ctx.userId };
     }
     if (method === "POST") fail(405, "Use workspace invitations to add a teammate.");
   }

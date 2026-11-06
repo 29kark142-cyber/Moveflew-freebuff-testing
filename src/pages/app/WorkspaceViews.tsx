@@ -69,6 +69,7 @@ import type {
   WorkspaceRole,
 } from "@shared/crm";
 import { calculateQuote, INVENTORY, money, volume, weight } from "@shared/crm";
+import { WORKSPACE_ROLES } from "@shared/membership";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import RouteSummaryCard from "@/components/workspace/RouteSummaryCard";
 import JobRoutePricing from "@/components/workspace/JobRoutePricing";
@@ -5062,45 +5063,61 @@ function MembershipSettings({ role }: { role: WorkspaceRole }) {
               </tr>
             </thead>
             <tbody>
-              {members.map(member => (
-                <tr key={member.id}>
-                  <td>
-                    <span className="ws-table-main">{member.name}</span>
-                    <small>{member.email}</small>
-                  </td>
-                  <td>
-                    <select
-                      className="ws-select"
-                      disabled={role !== "admin"}
-                      value={member.role}
-                      onChange={async e => {
-                        try {
-                          await crm.updateMember(
-                            member.id,
-                            eventValue(e) as WorkspaceRole
-                          );
-                          await refresh();
-                        } catch (reason) {
-                          setMessage(
-                            reason instanceof Error
-                              ? reason.message
-                              : "Could not update role."
-                          );
+              {members.map(member => {
+                const selfLocked = member.isSelf;
+                return (
+                  <tr key={member.id}>
+                    <td>
+                      <span className="ws-table-main">{member.name}</span>
+                      <small>{member.email}</small>
+                    </td>
+                    <td>
+                      <span
+                        title={
+                          selfLocked
+                            ? t(
+                                "You cannot demote your own admin account. Ask another Admin to change your role."
+                              )
+                            : undefined
                         }
-                      }}
-                    >
-                      {roleOptions.map(value => (
-                        <option value={value} key={value}>
-                          {t(value.replace("_", " "))}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    {member.role === "admin" && <StatusChip status="admin" />}
-                  </td>
-                </tr>
-              ))}
+                      >
+                        <select
+                          className="ws-select"
+                          disabled={role !== "admin" || selfLocked}
+                          value={member.role}
+                          aria-label={t("Role for {name}", {
+                            name: member.name,
+                          })}
+                          onChange={async e => {
+                            try {
+                              await crm.updateMember(
+                                member.id,
+                                eventValue(e) as WorkspaceRole
+                              );
+                              await refresh();
+                            } catch (reason) {
+                              setMessage(
+                                reason instanceof Error
+                                  ? reason.message
+                                  : "Could not update role."
+                              );
+                            }
+                          }}
+                        >
+                          {WORKSPACE_ROLES.map(value => (
+                            <option value={value} key={value}>
+                              {t(value.replace("_", " "))}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                    </td>
+                    <td>
+                      {member.role === "admin" && <StatusChip status="admin" />}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -5117,13 +5134,6 @@ function MembershipSettings({ role }: { role: WorkspaceRole }) {
     </section>
   );
 }
-const roleOptions: WorkspaceRole[] = [
-  "admin",
-  "office_admin",
-  "estimator",
-  "dispatcher",
-  "crew",
-];
 function SequenceSettings() {
   const { t } = useI18n();
   const {
