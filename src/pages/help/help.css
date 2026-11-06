@@ -44,6 +44,25 @@
   align-items: center;
   gap: 6px;
 }
+.help-assistant-restore {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ffffff45;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #ffffff12;
+  color: #e9f7ff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.help-assistant-restore:hover {
+  border-color: #ffffff85;
+  background: #ffffff24;
+}
 .help-controls {
   display: flex;
   align-items: center;

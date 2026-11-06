@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
-import { ArrowRight, Bot, Send, X, RotateCcw } from "lucide-react";
+import { ArrowRight, Bot, Send, X, RotateCcw, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getWorkspaceId, sessionAuthorization } from "@/lib/crm";
 import { useWorkspaceAppearanceSafe } from "@/components/workspace/AppearanceProvider";
 import { COPILOT_PATHS, COPILOT_ROUTES } from "@/lib/copilot-routes";
+import {
+  COPILOT_RESTORE_EVENT,
+  readCopilotMode,
+  saveCopilotMode,
+  type CopilotMode,
+} from "@/lib/copilot-visibility";
 
 type Msg = { role: "user" | "assistant"; content: string };
 const STARTERS = [
@@ -35,7 +41,8 @@ function Reply({ text, navigate }: { text: string; navigate: (p: string) => void
 }
 
 export default function CopilotAssistant({ path, navigate }: { path: string; navigate: (p: string) => void }) {
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<CopilotMode>(() => readCopilotMode() ?? "minimized");
+  const open = mode === "open";
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,11 +51,21 @@ export default function CopilotAssistant({ path, navigate }: { path: string; nav
   const field = useRef<HTMLTextAreaElement>(null);
   const appearance = useWorkspaceAppearanceSafe();
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    const restore = () => setMode("open");
+    window.addEventListener(COPILOT_RESTORE_EVENT, restore);
+    return () => window.removeEventListener(COPILOT_RESTORE_EVENT, restore);
+  }, []);
+  useEffect(() => { if (mounted) saveCopilotMode(mode); }, [mode, mounted]);
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight }); }, [messages]);
   useEffect(() => { if (open && !busy) field.current?.focus(); }, [open, busy]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMode(current => current === "open" ? "minimized" : current);
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -85,12 +102,12 @@ export default function CopilotAssistant({ path, navigate }: { path: string; nav
     }
   }
 
-  const go = (p: string) => { navigate(p); if (window.innerWidth < 640) setOpen(false); };
+  const go = (p: string) => { navigate(p); if (window.innerWidth < 640) setMode("minimized"); };
 
   // Portaled to <body>: an ancestor with backdrop-filter/transform (the glass shell
   // behind a workspace wallpaper) would otherwise become the containing block and let
   // the widget scroll away with the page instead of staying pinned to the viewport.
-  if (!mounted) return null;
+  if (!mounted || mode === "closed") return null;
 
   return createPortal(
     <div
@@ -98,15 +115,30 @@ export default function CopilotAssistant({ path, navigate }: { path: string; nav
       data-preset={appearance?.value.preset}
       data-accent={appearance?.value.accent}
     >
-      <button
-        type="button"
-        title="Need help? Ask AI"
-        aria-label="Need help? Ask AI"
-        onClick={() => setOpen(o => !o)}
-        className="fixed bottom-[calc(1.5rem_+_env(safe-area-inset-bottom))] right-[calc(1.5rem_+_env(safe-area-inset-right))] z-[100] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40 ring-4 ring-primary/20 transition hover:scale-105 hover:shadow-primary/60"
-      >
-        {open ? <X size={22} /> : <Bot size={24} />}
-      </button>
+      {!open && (
+        <div className="fixed bottom-[calc(1.5rem_+_env(safe-area-inset-bottom))] right-[calc(1.5rem_+_env(safe-area-inset-right))] z-[100] flex items-center gap-2">
+          <button
+            type="button"
+            title="Need help? Ask AI"
+            aria-label="Need help? Ask AI"
+            aria-haspopup="dialog"
+            onClick={() => setMode("open")}
+            className="flex h-12 items-center gap-2 rounded-full bg-primary px-3 text-primary-foreground shadow-lg shadow-primary/40 ring-4 ring-primary/20 transition hover:scale-105 hover:shadow-primary/60"
+          >
+            <Bot size={22} />
+            <span className="hidden text-xs font-semibold sm:inline">AI Help</span>
+          </button>
+          <button
+            type="button"
+            title="Hide AI assistant"
+            aria-label="Hide AI assistant"
+            onClick={() => setMode("closed")}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition hover:bg-muted hover:text-foreground"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <div
         role="dialog"
@@ -122,8 +154,9 @@ export default function CopilotAssistant({ path, navigate }: { path: string; nav
             <b className="block text-sm">CrewAI Assistant</b>
             <small className="text-muted-foreground">Help and navigation for your workspace</small>
           </div>
-          {messages.length > 0 && <Button size="icon" variant="ghost" aria-label="New conversation" onClick={() => setMessages([])}><RotateCcw size={16} /></Button>}
-          <Button size="icon" variant="ghost" aria-label="Close" onClick={() => setOpen(false)}><X size={16} /></Button>
+          {messages.length > 0 && <Button size="icon" variant="ghost" aria-label="New conversation" title="New conversation" onClick={() => setMessages([])}><RotateCcw size={16} /></Button>}
+          <Button size="icon" variant="ghost" aria-label="Minimize assistant" title="Minimize assistant" onClick={() => setMode("minimized")}><Minus size={16} /></Button>
+          <Button size="icon" variant="ghost" aria-label="Close assistant" title="Close assistant" onClick={() => setMode("closed")}><X size={16} /></Button>
         </header>
 
         <div ref={scroller} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">

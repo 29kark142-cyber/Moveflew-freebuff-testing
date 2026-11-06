@@ -7,6 +7,7 @@ import {
   List,
   ShieldCheck,
   ChevronRight,
+  Bot,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import type { ModuleProps } from "@shared/expansion";
@@ -21,6 +22,7 @@ import {
   type HelpChunk,
 } from "@shared/help";
 import { useI18n } from "@/lib/i18n";
+import { requestCopilotRestore } from "@/lib/copilot-visibility";
 import "./help.css";
 
 export default function HelpPage({ role, navigate }: ModuleProps) {
@@ -288,6 +290,14 @@ export default function HelpPage({ role, navigate }: ModuleProps) {
             <ShieldCheck size={13} aria-hidden="true" />
             {t(roleLabel(role))}
           </span>
+          <button
+            type="button"
+            className="help-assistant-restore"
+            onClick={requestCopilotRestore}
+          >
+            <Bot size={13} aria-hidden="true" />
+            {tx("Open AI assistant", "Открыть AI-помощника")}
+          </button>
         </div>
       </header>
       <div className="help-controls">
