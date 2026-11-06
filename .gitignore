@@ -27,6 +27,14 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Private credentials / local key material
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

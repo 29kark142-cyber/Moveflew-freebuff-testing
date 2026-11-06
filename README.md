@@ -187,9 +187,12 @@ public/         Static assets, manifest and the field offline shell
 
 ## Deployment
 
-`bun run build` produces a Nitro server bundle in `.output/server` and static assets in
-`.output/public`. Deploy to any Nitro-compatible host (Cloudflare is the default target), set
-the environment variables in the host, and keep `.env` out of version control.
+`bun run build` targets Nitro's Cloudflare Pages preset and writes the deployable bundle to
+`dist` (`_worker.js`, `_routes.json`, `_headers`, `_redirects`, and static assets). For a
+Cloudflare Pages project, use `bun run build` as the build command and `dist` as the output
+directory. On Pages, `_routes.json` sends application routes to `_worker.js`, which handles SSR
+and `/api/*`. `public/_redirects` contains the requested `/* /index.html 200` rule for static
+hosts. Set the environment variables in the host and keep `.env` out of version control.
 
 ## PWA and offline field work
 

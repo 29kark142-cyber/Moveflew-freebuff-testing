@@ -9,12 +9,17 @@ import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  nitro: {
+    // Cloudflare Pages needs the Worker at dist/_worker.js plus the static assets
+    // beside it. The Worker keeps SSR and /api/* routes working.
+    preset: "cloudflare-pages",
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  plugins: [mcpPlugin(), VitePWA({ outDir:'dist/client', strategies:'generateSW', filename:'sw.js', injectRegister:null, registerType:'autoUpdate', manifest:false, devOptions:{enabled:false},
+  plugins: [mcpPlugin(), VitePWA({ outDir:'dist', strategies:'generateSW', filename:'sw.js', injectRegister:null, registerType:'autoUpdate', manifest:false, devOptions:{enabled:false},
     workbox:{ globPatterns:['**/*.{js,css,woff2,ttf,png,svg}'], globIgnores:['**/server/**'], maximumFileSizeToCacheInBytes:5*1024*1024,
       additionalManifestEntries:[{url:'/field-offline.html',revision:'1'}], navigateFallback:undefined,
       runtimeCaching:[{urlPattern:({request,url})=>request.mode==='navigate' && /^\/app\/field(?:\/?$|\/)/.test(url.pathname),handler:'NetworkFirst',options:{cacheName:'moveflew-field-navigation',networkTimeoutSeconds:5,precacheFallback:{fallbackURL:'/field-offline.html'},cacheableResponse:{statuses:[200]},expiration:{maxEntries:1,maxAgeSeconds:86400}}},
