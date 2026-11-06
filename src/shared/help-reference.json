@@ -60,6 +60,65 @@
         "office_admin"
       ],
       "note": "Generate invoices writes records, not customer charges; billing cycles are duplicate-protected."
+    },
+    {
+      "id": "schedule",
+      "title": "Schedule & Assign Crew",
+      "route": "/app/schedule",
+      "minimumRole": "Dispatcher",
+      "roles": [
+        "admin",
+        "office_admin",
+        "dispatcher"
+      ],
+      "note": "Month, week, and day schedule with crew/truck filters, conflict warnings, and server-validated updates."
+    },
+    {
+      "id": "job-sheet",
+      "title": "Open & Work a Job",
+      "route": "/app/jobs",
+      "minimumRole": "All roles",
+      "roles": [
+        "admin",
+        "office_admin",
+        "estimator",
+        "dispatcher",
+        "crew"
+      ],
+      "note": "Open a saved job from Jobs. Assigned crews use /app/field for the mobile job sheet and sign-off."
+    },
+    {
+      "id": "crew-invite",
+      "title": "Invite Crew",
+      "route": "/app/settings",
+      "minimumRole": "Office Admin",
+      "roles": [
+        "admin",
+        "office_admin"
+      ],
+      "note": "Settings → Membership creates a share link or email invitation with role, rate, and optional worker candidate."
+    },
+    {
+      "id": "settings",
+      "title": "Workspace Settings",
+      "route": "/app/settings",
+      "minimumRole": "Office Admin",
+      "roles": [
+        "admin",
+        "office_admin"
+      ],
+      "note": "Appearance, White-label, Pricing, Reminders, Membership, Sequences, Website integrations, and Billing."
+    },
+    {
+      "id": "billing",
+      "title": "Billing & Payments",
+      "route": "/app/billing",
+      "minimumRole": "Admin / Office Admin",
+      "roles": [
+        "admin",
+        "office_admin"
+      ],
+      "note": "Customer invoice and payment ledger; storage billing is a separate tab from the workspace subscription panel."
     }
   ],
   "fieldChecklist": [
@@ -130,7 +189,16 @@
     "Clock in",
     "Clock out",
     "Pre-move walkthrough",
-    "Post-move walkthrough"
+    "Post-move walkthrough",
+    "Workers",
+    "Schedule",
+    "Branches",
+    "Box scanning",
+    "Financial analytics",
+    "Appearance",
+    "White-label",
+    "Reminders",
+    "Website integrations"
   ],
   "originalContentSha256": "7efbaf2409599526e7bceea7e4df1c46ba5c4b482af05b6a6cc249405348a213"
 }

@@ -6,6 +6,8 @@ export const moveflewFaq = [
   { q: "How are travel time and fuel charges calculated?", a: "MoveFlew uses Google Maps routes from your dispatch base to calculate miles and drive time, then applies the travel and fuel rules you set." },
   { q: "Can I switch from SmartMoving?", a: "Yes. You can set up your trucks, crew and pricing in a new workspace and run your next move on MoveFlew while you evaluate it." },
   { q: "Is my company's data kept separate?", a: "Yes. Every workspace is isolated at the database level, and crew members only see the jobs they are assigned to." },
+  { q: "How do I sign in to MoveFlew?", a: "Open the Team login page. Depending on what your workspace has enabled, you can use an email/password, Google, an email sign-in link, a phone verification code, or Manus. New companies can create an account and workspace from the same page." },
+  { q: "Can I invite my crew?", a: "Yes. Admins and office admins can invite crew from Settings → Membership with a secure share link or email. The invitee completes onboarding before they can see workspace records." },
 ];
 
 export function faqJsonLd() {

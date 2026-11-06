@@ -50,12 +50,16 @@ export function roleLabel(role: WorkspaceRole): string {
 const finance: WorkspaceRole[] = ["admin", "office_admin"];
 const management: WorkspaceRole[] = [...finance, "dispatcher"];
 const office: WorkspaceRole[] = [...management, "estimator"];
+const field: WorkspaceRole[] = [...management, "crew"];
 const permissions: Record<string, WorkspaceRole[]> = {
   "/app/docs": HELP_ROLES,
   "/app/dashboard": HELP_ROLES,
   "/app/jobs": HELP_ROLES,
   "/app/documents": HELP_ROLES,
-  "/app/field": [...management, "crew"],
+  "/app/workers": field,
+  "/app/field": field,
+  "/app/inventory": [...office, "crew"],
+  "/app/schedule": management,
   "/app/leads": office,
   "/app/pipeline": office,
   "/app/estimates": office,
@@ -66,6 +70,8 @@ const permissions: Record<string, WorkspaceRole[]> = {
   "/app/reports": office,
   "/app/marketing": office,
   "/app/reviews": office,
+  "/app/branches": finance,
+  "/app/finance": finance,
   "/app/dispatch": management,
   "/app/calendar": management,
   "/app/fleet": management,
@@ -86,6 +92,9 @@ const permissions: Record<string, WorkspaceRole[]> = {
   "/app/transactional-messages": finance,
   "/app/automation": finance,
   "/app/settings": finance,
+  "/app/settings/pricing": finance,
+  "/app/settings/integrations": finance,
+  "/app/settings/billing": finance,
 };
 export function canUseHelpRoute(route: string, role: WorkspaceRole): boolean {
   const clean = route.split(/[?#]/)[0];
