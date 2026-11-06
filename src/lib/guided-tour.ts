@@ -35,7 +35,8 @@ export type GuidedTourDefinition = {
   steps: GuidedTourStep[];
 };
 
-/** The BOL route needs a real job id; the tour host resolves it before navigating. */
+/** These routes need a real job id; the tour host resolves them before navigating. */
+export const JOB_TOUR_PATH = "/app/jobs/:id";
 export const BOL_TOUR_PATH = "/app/jobs/:id/bol";
 export const GUIDED_TOUR_EVENT = "nwcrewcrm:guided-tour";
 export const GUIDED_TOUR_COMPLETED_EVENT = "nwcrewcrm:guided-tour-completed";
@@ -70,10 +71,11 @@ export const GUIDED_TOURS: GuidedTourDefinition[] = [
       },
       {
         id: "job-sheet",
-        path: "/app/jobs",
+        path: JOB_TOUR_PATH,
         selectors: [
           '[data-tour="field-job-sheet"]',
           '[data-tour="job-sheet"]',
+          '[data-tour="jobs-page"]',
           '[data-tour="jobs-nav"]',
         ],
         title: "The job sheet",
@@ -426,7 +428,7 @@ export function resolveTourSelector(selectors: string[]): string | null {
  */
 export function buildGuidedTourSteps(
   tour: GuidedTourDefinition,
-  onStepStart?: (stepId: string) => void,
+  onStepStart?: (stepId: string, element?: Element) => void,
   onNavigateStep?: (index: number) => void,
 ): DriveStep[] {
   return tour.steps.map((step, index) => {
@@ -450,7 +452,7 @@ export function buildGuidedTourSteps(
           ? { onPrevClick: () => onNavigateStep(index - 1) }
           : {}),
       },
-      onHighlightStarted: () => onStepStart?.(step.id),
+      onHighlightStarted: (element) => onStepStart?.(step.id, element),
     };
   });
 }

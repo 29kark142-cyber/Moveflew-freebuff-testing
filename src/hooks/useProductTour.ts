@@ -5,6 +5,7 @@ import { crm } from "@/lib/crm";
 import {
   BOL_TOUR_PATH,
   GUIDED_TOUR_EVENT,
+  JOB_TOUR_PATH,
   buildGuidedTourSteps,
   clearTourCompletion,
   getGuidedTour,
@@ -74,8 +75,10 @@ export type ProductTourOptions = {
   delayMs?: number;
   /** Runs before the first step, e.g. to open a collapsed mobile drawer. */
   onBeforeStart?: (tourId: GuidedTourId) => void | Promise<void>;
-  /** Fires as each step is highlighted, with that step's id. */
-  onStepStart?: (stepId: string) => void;
+  /** Fires as each step is highlighted, with that step's id and target. */
+  onStepStart?: (stepId: string, target?: Element | null) => void;
+  /** Runs after navigation/preparation but before driver.js measures the target. */
+  onBeforeStep?: (stepId: string, target: Element | null) => void | Promise<void>;
   /** Fires when the tour completes, is dismissed or is stopped. */
   onTourEnd?: () => void;
   /** Shell navigation used to move between topic pages during a tour. */
@@ -101,6 +104,7 @@ export default function useProductTour({
   delayMs = 900,
   onBeforeStart,
   onStepStart,
+  onBeforeStep,
   onTourEnd,
   navigate,
   currentPath,
@@ -125,10 +129,12 @@ export default function useProductTour({
   // Callbacks live in refs so a re-rendering host never rebuilds a live tour.
   const beforeStart = useRef(onBeforeStart);
   const stepStart = useRef(onStepStart);
+  const beforeStep = useRef(onBeforeStep);
   const tourEnd = useRef(onTourEnd);
   useEffect(() => {
     beforeStart.current = onBeforeStart;
     stepStart.current = onStepStart;
+    beforeStep.current = onBeforeStep;
     tourEnd.current = onTourEnd;
   });
   useEffect(() => {
@@ -172,6 +178,41 @@ export default function useProductTour({
     }
   }, []);
 
+  const resolveStepTarget = useCallback((step: GuidedTourStep): Element | null => {
+    const selector = resolveTourSelector(step.selectors);
+    return selector ? document.querySelector(selector) : null;
+  }, []);
+
+  /**
+   * Driver measures the stage as soon as it renders the popover. Smooth scrolling
+   * is asynchronous, so wait for the target to settle before handing it to driver.
+   */
+  const scrollStepIntoView = useCallback(async (target: Element | null) => {
+    if (!target || typeof target.scrollIntoView !== "function") return;
+    try {
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    } catch {
+      target.scrollIntoView();
+    }
+    if (typeof window.requestAnimationFrame !== "function") return;
+    await new Promise<void>((resolve) => {
+      const deadline = Date.now() + 650;
+      let lastTop = target.getBoundingClientRect().top;
+      let stableFrames = 0;
+      const tick = () => {
+        const top = target.getBoundingClientRect().top;
+        stableFrames = Math.abs(top - lastTop) < 1 ? stableFrames + 1 : 0;
+        lastTop = top;
+        if (stableFrames >= 2 || Date.now() >= deadline) {
+          resolve();
+          return;
+        }
+        window.requestAnimationFrame(tick);
+      };
+      window.requestAnimationFrame(tick);
+    });
+  }, []);
+
   const prepareStep = useCallback(async (step: GuidedTourStep) => {
     const prepare = step.prepare;
     if (!prepare) return;
@@ -195,8 +236,17 @@ export default function useProductTour({
 
   const resolveStepPath = useCallback(async (step: GuidedTourStep) => {
     if (!step.path) return null;
-    if (step.path !== BOL_TOUR_PATH) return step.path;
+    if (step.path !== BOL_TOUR_PATH && step.path !== JOB_TOUR_PATH) return step.path;
     const currentJob = /^\/app\/jobs\/(\d+)(?:\/bol)?\/?$/.exec(pathRef.current);
+    if (step.path === JOB_TOUR_PATH) {
+      if (currentJob) return `/app/jobs/${currentJob[1]}`;
+      try {
+        const jobs = await crm.jobs();
+        return jobs[0] ? `/app/jobs/${jobs[0].id}` : "/app/jobs";
+      } catch {
+        return "/app/jobs";
+      }
+    }
     if (currentJob) return `/app/jobs/${currentJob[1]}/bol`;
     try {
       const jobs = await crm.jobs();
@@ -235,6 +285,13 @@ export default function useProductTour({
       }
       await prepareStep(first);
       await waitForStep(first);
+      const firstTarget = resolveStepTarget(first);
+      try {
+        await beforeStep.current?.(first.id, firstTarget);
+      } catch {
+        /* host preparation must never block the tour */
+      }
+      await scrollStepIntoView(firstTarget);
 
       const { driver } = await import("driver.js");
       let activeTour: ReturnType<typeof import("driver.js").driver> | null = null;
@@ -256,6 +313,13 @@ export default function useProductTour({
           }
           await prepareStep(target);
           await waitForStep(target);
+          const targetElement = resolveStepTarget(target);
+          try {
+            await beforeStep.current?.(target.id, targetElement);
+          } catch {
+            /* host preparation must never block the tour */
+          }
+          await scrollStepIntoView(targetElement);
           scheduleRefresh();
           activeTour?.moveTo(index);
         } finally {
@@ -271,13 +335,14 @@ export default function useProductTour({
         doneBtnText: "Got it",
         allowClose: true,
         overlayColor: "rgba(6, 20, 34, 0.62)",
-        stagePadding: 6,
+        stagePadding: 10,
         stageRadius: 12,
+        smoothScroll: true,
         popoverClass: "moveflew-tour",
         steps: buildGuidedTourSteps(
           definition,
-          (stepId) => {
-            stepStart.current?.(stepId);
+          (stepId, element) => {
+            stepStart.current?.(stepId, element);
             scheduleRefresh();
           },
           (index) => {
@@ -297,7 +362,16 @@ export default function useProductTour({
       setIsRunning(true);
       activeTour.drive(0);
     },
-    [cancelRefresh, markSeen, prepareStep, resolveStepPath, scheduleRefresh, waitForStep],
+    [
+      cancelRefresh,
+      markSeen,
+      prepareStep,
+      resolveStepPath,
+      resolveStepTarget,
+      scheduleRefresh,
+      scrollStepIntoView,
+      waitForStep,
+    ],
   );
 
   // Any surface can launch a tour by dispatching the shared event.

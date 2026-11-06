@@ -415,12 +415,20 @@ export default function WorkspaceShell({
     setOpen(true);
     return true;
   };
-  const closeTourDrawer = () => {
-    if (!drawerOpenedForTour.current) return;
+  const hideDrawer = () => {
+    if (!drawerMode()) return false;
     drawerOpenedForTour.current = false;
+    if (!openRef.current) return false;
     openRef.current = false;
     setOpen(false);
+    return true;
   };
+  const closeTourDrawer = () => {
+    if (!drawerOpenedForTour.current) return;
+    hideDrawer();
+  };
+  const waitForDrawer = () =>
+    new Promise<void>((resolve) => window.setTimeout(resolve, 240));
   const tour = useProductTour({
     autoStart,
     navigate,
@@ -428,18 +436,15 @@ export default function WorkspaceShell({
     onBeforeStart: async (tourId) => {
       if (tourId !== "full_platform") return;
       // Wait for the drawer transition so the first highlight is measured on it.
-      if (revealDrawer()) {
-        await new Promise((resolve) => window.setTimeout(resolve, 320));
-      }
+      if (revealDrawer()) await waitForDrawer();
     },
-    onStepStart: (stepId) => {
-      // Steps 1, 3 and 4 point inside the sidebar; the quote step sits in the page
-      // header, so the drawer is closed again to keep that button visible.
-      if (stepId === "navigation" || stepId === "job-sheet" || stepId === "storage") {
-        revealDrawer();
-      } else {
-        closeTourDrawer();
-      }
+    onBeforeStep: async (_stepId, target) => {
+      // A sidebar anchor needs the drawer; a page-content target must not sit
+      // underneath it. Decide from the element that driver will actually highlight.
+      if (!drawerMode()) return;
+      const inSidebar = Boolean(target?.closest(".ws-sidebar"));
+      const changed = inSidebar ? revealDrawer() : hideDrawer();
+      if (changed) await waitForDrawer();
     },
     onTourEnd: closeTourDrawer,
   });

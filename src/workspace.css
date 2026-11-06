@@ -1622,7 +1622,11 @@
 }
 
 /* Product tour (driver.js): keep the popover on-brand with the workspace shell. */
+.driver-overlay {
+  z-index: 10000 !important;
+}
 .moveflew-tour.driver-popover {
+  z-index: 10001 !important;
   max-width: 340px;
   border-radius: 14px;
   padding: 18px 20px 14px;
