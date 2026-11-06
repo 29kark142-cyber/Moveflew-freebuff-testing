@@ -10,18 +10,18 @@
   --color-popover: var(--card);
   --color-popover-foreground: var(--foreground);
   --color-primary: var(--primary);
-  --color-primary-foreground: #fff;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: var(--foreground);
-  --color-muted: #f4f7fa;
-  --color-muted-foreground: #64748b;
-  --color-accent: #edf5ff;
-  --color-accent-foreground: var(--foreground);
-  --color-destructive: #df5360;
-  --color-destructive-foreground: #fff;
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--border);
-  --color-ring: #0877eb;
+  --color-ring: var(--ring);
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -37,9 +37,43 @@
   --background: #fff;
   --foreground: #0a2137;
   --primary: #0877eb;
+  --primary-foreground: #fff;
   --card: #fff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0a2137;
+  --muted: #f4f7fa;
+  --muted-foreground: #64748b;
+  --accent: #edf5ff;
+  --accent-foreground: #0a2137;
+  --destructive: #df5360;
+  --destructive-foreground: #fff;
+  --ring: #0877eb;
   --radius: 0.6rem;
+  --brand-blue: #0877eb;
+  --brand-cyan: #31b3ed;
+  --focus-ring: color-mix(in srgb, var(--primary) 60%, transparent);
+  --surface-shadow: 0 1px 2px rgb(6 29 49 / 0.06), 0 10px 24px -20px rgb(6 29 49 / 0.28);
+  --surface-shadow-lg: 0 24px 60px -30px rgb(6 29 49 / 0.38), 0 4px 12px -8px rgb(6 29 49 / 0.18);
+  --ease-out-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
   --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+/* Radix portals mount under <body>, outside the workspace appearance root. Keep their
+   semantic tokens in sync so dialogs, selects and menus do not flash a light surface. */
+html[data-workspace-mode="dark"] {
+  --background: #080f1c;
+  --foreground: #f1f5f9;
+  --card: #0f1a2b;
+  --secondary: #17243a;
+  --secondary-foreground: #f1f5f9;
+  --muted: #17243a;
+  --muted-foreground: #a8b8cc;
+  --accent: #1b2b43;
+  --accent-foreground: #f1f5f9;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fee2e2;
+  --border: #2c4059;
+  --ring: #7ca7ff;
+  color-scheme: dark;
 }
 * {
   box-sizing: border-box;
@@ -78,7 +112,7 @@ button {
   cursor: pointer;
 }
 button:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.65;
 }
 button {
@@ -89,7 +123,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #31b3ed88;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 img {
