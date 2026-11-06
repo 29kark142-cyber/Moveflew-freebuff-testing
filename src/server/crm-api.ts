@@ -3,7 +3,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { QUOTE_EMAIL_RE, QUOTE_PHONE_RE } from "../shared/quote-dispatch";
-import { calculateQuote, DEFAULT_PRICING, type Pricing } from "../shared/crm";
+import { calculateQuoteWithSurge, DEFAULT_PRICING, type Pricing } from "../shared/crm";
+import { parseSurgeSettings, quoteSurgeFrom } from "../shared/surge";
 import { conflictsFor, type ScheduledJob } from "../shared/dispatch";
 import { fieldRoute } from "./field-api";
 import { canTestBook } from "../lib/test-booking";
@@ -37,6 +38,8 @@ export type Ctx = {
   email: string;
   wsId: number | null;
   role: string | null;
+  /** Selected office location from the top-nav branch context. */
+  branchId?: number | null;
   q?: URLSearchParams;
   origin?: string;
 };
@@ -78,7 +81,12 @@ const KINDS: Record<string, string> = {
   sequences: "sequence",
   vaults: "vault",
   expenses: "expense",
+  inspections: "inspection",
+  branches: "branch",
 };
+
+// Operational records carry a branchId so the top-nav context can scope them.
+const BRANCH_SCOPED = new Set(["job", "truck", "expense", "reminder", "inspection"]);
 
 const DEFAULTS: Record<string, Record<string, unknown>> = {
   customer: { name: "", email: "", phone: "", source: "", score: 0, status: "new", notes: "" },
@@ -126,6 +134,23 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     weightLimit: 0,
     dimensions: "",
     status: "available",
+    mileage: 0,
+    serviceIntervalMiles: 5000,
+    lastServiceMiles: 0,
+    lastServiceDate: "",
+    nextServiceDate: "",
+    maintenanceNotes: "",
+    maintenanceLog: [],
+  },
+  inspection: {
+    truckId: null,
+    truckName: "",
+    driverId: null,
+    driverName: "",
+    date: "",
+    items: [],
+    passed: false,
+    notes: "",
   },
   crew: {
     userId: null,
@@ -144,6 +169,26 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     incurredDate: "",
     vendor: "",
     notes: "",
+  },
+  branch: {
+    name: "",
+    code: "",
+    address: "",
+    phone: "",
+    manager: "",
+    status: "active",
+  },
+  campaign: {
+    name: "",
+    source: "",
+    startDate: "",
+    endDate: "",
+    spendCents: 0,
+    notes: "",
+    status: "draft",
+    channel: "email",
+    audience: "all",
+    template: "",
   },
   reminder: { customerId: null, title: "", dueAt: "", completed: false },
   sequence: {
@@ -196,7 +241,10 @@ async function list(ctx: Ctx, kind: string) {
     .order("id", { ascending: false })
     .limit(1000);
   if (error) dbFail(500, error);
-  return (data as Row[]).map((r) => toRecord(r, ws));
+  const records = (data as Row[]).map((r) => toRecord(r, ws));
+  if (ctx.branchId && BRANCH_SCOPED.has(kind))
+    return records.filter((record) => Number((record as Record<string, unknown>)["branchId"]) === ctx.branchId);
+  return records;
 }
 
 async function getOne(ctx: Ctx, kind: string, id: number) {
@@ -210,6 +258,8 @@ async function getOne(ctx: Ctx, kind: string, id: number) {
     .maybeSingle();
   if (error) dbFail(500, error);
   if (!data) fail(404, "Not found");
+  if (ctx.branchId && BRANCH_SCOPED.has(kind) && Number((data as Row).data["branchId"]) !== ctx.branchId)
+    fail(404, "Not found in the selected branch");
   return data as Row;
 }
 
@@ -254,6 +304,7 @@ const SERVER_FIELDS = new Set([
   "quoteAcceptance",
   "quoteAcceptedAt",
   "quoteDepositIntent",
+  "quoteSurge",
   // Crew shift tokens, receipts and answers are written by the shift endpoints only.
   "crewDispatch",
   "crewShifts",
@@ -298,6 +349,7 @@ const EXTRA_FIELDS: Record<string, string[]> = {
   damage: ["jobId", "phase", "note", "photoUrl"],
   damageInput: ["phase", "note", "photoData"],
   vault: [],
+  campaign: ["status", "channel", "audience", "template"],
 };
 const allowedFields = (kind: string) =>
   new Set([...Object.keys(DEFAULTS[kind] ?? {}), ...(EXTRA_FIELDS[kind] ?? [])]);
@@ -346,8 +398,20 @@ async function enrichJob(ctx: Ctx, data: Record<string, unknown>, pricing: Prici
   }
   // Proposal links are issued only by publishing a proposal (moving_proposals); never invent one here.
   try {
-    data["total"] = calculateQuote(data as never, pricing.minimumHours);
+    const priced = calculateQuoteWithSurge(
+      data as never,
+      pricing.minimumHours,
+      parseSurgeSettings(pricing.surge),
+      pricing.weekendPercent,
+    );
+    data["total"] = priced.total;
+    data["quoteSurge"] = quoteSurgeFrom(
+      priced.surge,
+      String(data["moveDate"] ?? ""),
+      new Date().toISOString(),
+    );
   } catch {
+    data["quoteSurge"] = null;
     /* keep provided total */
   }
   return data;
@@ -359,6 +423,7 @@ async function create(ctx: Ctx, kind: string, body: unknown) {
   if (kind === "job" && !PRICING_ROLES.includes(ctx.role ?? ""))
     for (const f of JOB_PRICING_FIELDS) delete input[f];
   let data: Record<string, unknown> = { ...DEFAULTS[kind], ...input };
+  if (ctx.branchId && BRANCH_SCOPED.has(kind)) data["branchId"] = ctx.branchId;
   if (kind === "job") data = await enrichJob(ctx, data, await pricingFor(ctx));
   const { data: row, error } = await ctx.db
     .from("workspace_records")
@@ -366,7 +431,20 @@ async function create(ctx: Ctx, kind: string, body: unknown) {
     .select("id,data,created_at")
     .single();
   if (error) dbFail(403, error);
-  return toRecord(row as Row, ws);
+  const saved = toRecord(row as Row, ws) as Record<string, unknown> & { id: number };
+  if (
+    kind === "job" &&
+    Number(saved["customerId"]) &&
+    ["booked", "won", "in_progress", "completed"].includes(String(saved["status"] ?? ""))
+  ) {
+    try {
+      const { markMarketingConversion } = await import("./growth-api");
+      await markMarketingConversion(ctx.db, ws, Number(saved["customerId"]));
+    } catch (error) {
+      console.error("Marketing conversion update failed", error);
+    }
+  }
+  return saved;
 }
 
 // Billing inputs that drive the customer's final balance.
@@ -425,7 +503,35 @@ async function update(ctx: Ctx, kind: string, id: number, body: unknown) {
     .select("id,data,created_at")
     .single();
   if (error) dbFail(403, error);
-  return toRecord(row as Row, ws);
+  const saved = toRecord(row as Row, ws) as Record<string, unknown> & { id: number };
+  if (
+    kind === "job" &&
+    ["booked", "won", "in_progress", "completed"].includes(String(saved["status"] ?? "")) &&
+    ctx.origin
+  ) {
+    try {
+      const { markMarketingConversion } = await import("./growth-api");
+      await markMarketingConversion(ctx.db, ws, Number(saved["customerId"]));
+    } catch (error) {
+      console.error("Marketing conversion update failed", error);
+    }
+  }
+  if (kind === "job" && saved["status"] === "completed" && ctx.origin) {
+    try {
+      const { ensureReviewForJob } = await import("./growth-api");
+      await ensureReviewForJob(
+        ctx.db,
+        ws,
+        ctx.userId,
+        ctx.origin,
+        { id, data: saved },
+      );
+    } catch (error) {
+      // A review-provider outage must never roll back the completed job.
+      console.error("Automatic review request failed", error);
+    }
+  }
+  return saved;
 }
 
 const assignSchema = z
@@ -454,6 +560,11 @@ async function assignJob(ctx: Ctx, id: number, body: unknown) {
   if (a.truckId) {
     const t = trucks.find((x) => x.id === a.truckId);
     if (!t) fail(400, "That truck is not in this workspace");
+    if (t && t["status"] === "maintenance")
+      fail(
+        409,
+        `${String(t["name"])} is in maintenance and cannot be assigned until service is complete`,
+      );
     if (t && t["status"] !== "active" && t["status"] !== "available")
       fail(409, `${String(t["name"])} is not active`);
   }
@@ -509,7 +620,12 @@ function requireWs(ctx: Ctx): number {
 async function pricingFor(ctx: Ctx): Promise<Pricing> {
   const ws = requireWs(ctx);
   const { data } = await ctx.db.from("workspaces").select("pricing").eq("id", ws).maybeSingle();
-  return (data?.pricing as Pricing | null) ?? DEFAULT_PRICING;
+  const raw = (data?.pricing as Partial<Pricing> | null) ?? {};
+  return {
+    ...DEFAULT_PRICING,
+    ...raw,
+    surge: parseSurgeSettings(raw.surge),
+  };
 }
 
 const BRANDING_ROLES = ["admin", "office_admin"];
@@ -596,9 +712,102 @@ async function workspaces(ctx: Ctx) {
   });
 }
 
+const quoteNumber = (value: unknown, fallback = 0) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
+const quotePreviewSchema = z
+  .object({
+    moveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    pricingMode: z.enum(["hourly", "long_distance"]).default("hourly"),
+    hourlyRate: z.coerce.number().finite().min(0).max(1_000_000).default(0),
+    estimatedHours: z.coerce.number().finite().min(0).max(1000).default(2.5),
+    distanceMiles: z.coerce.number().finite().min(0).max(100_000).default(0),
+    travelFee: z.coerce.number().finite().min(0).max(100_000).default(0),
+    weightRate: z.coerce.number().finite().min(0).max(1000).default(0),
+    mileRate: z.coerce.number().finite().min(0).max(1000).default(0),
+    discountPercent: z.coerce.number().finite().min(0).max(100).default(0),
+    inventory: z
+      .array(
+        z
+          .object({
+            weight: z.coerce.number().finite().min(0).max(1_000_000),
+            quantity: z.coerce.number().finite().min(0).max(100_000),
+          })
+          .strip(),
+      )
+      .max(1000)
+      .default([]),
+    fees: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().max(120).default("Fee"),
+            amount: z.coerce.number().finite().min(0).max(1_000_000),
+          })
+          .strip(),
+      )
+      .max(100)
+      .default([]),
+  })
+  .strip();
+
 async function route(ctx: Ctx, method: string, parts: string[], body: () => Promise<unknown>) {
   const [head, idRaw, sub] = parts;
   const id = idRaw ? Number(idRaw) : NaN;
+
+  // Server-side quote preview. The office gets the same surge rules that enrichJob
+  // persists, so a copied preview cannot drift from the saved quote.
+  if (head === "quote" && method === "POST") {
+    if (!PRICING_ROLES.includes(ctx.role ?? ""))
+      fail(403, "Only office staff can price a quote");
+    const parsed = quotePreviewSchema.safeParse(await body());
+    if (!parsed.success) fail(400, "Invalid quote pricing input");
+    const input = parsed.data!;
+    const jobInput = {
+      moveDate: String(input.moveDate ?? ""),
+      pricingMode:
+        input.pricingMode === "long_distance"
+          ? ("long_distance" as const)
+          : ("hourly" as const),
+      hourlyRate: quoteNumber(input.hourlyRate),
+      estimatedHours: quoteNumber(input.estimatedHours, 2.5),
+      distanceMiles: quoteNumber(input.distanceMiles),
+      travelFee: quoteNumber(input.travelFee),
+      weightRate: quoteNumber(input.weightRate),
+      mileRate: quoteNumber(input.mileRate),
+      discountPercent: Math.min(100, Math.max(0, quoteNumber(input.discountPercent))),
+      inventory: (Array.isArray(input.inventory) ? input.inventory : []).map((item) => ({
+        key: "",
+        name: "",
+        room: "",
+        cuft: 0,
+        weight: quoteNumber(item?.weight),
+        quantity: quoteNumber(item?.quantity),
+      })),
+      fees: (Array.isArray(input.fees) ? input.fees : []).map((fee) => ({
+        name: String(fee?.name || "Fee").slice(0, 120),
+        amount: quoteNumber(fee?.amount),
+      })),
+    };
+    const pricing = await pricingFor(ctx);
+    const priced = calculateQuoteWithSurge(
+      jobInput,
+      pricing.minimumHours,
+      parseSurgeSettings(pricing.surge),
+      pricing.weekendPercent,
+    );
+    return {
+      moveDate: jobInput.moveDate,
+      pricingMode: jobInput.pricingMode,
+      discountPercent: jobInput.discountPercent,
+      preSurgeTotal: priced.base,
+      surge: priced.surge,
+      total: priced.total,
+      currency: "USD",
+    };
+  }
 
   // Workspace pre-move reminder rules: lead times, tiers, channels and copy overrides.
   if (head === "reminder-settings" && (method === "GET" || method === "PUT")) {
@@ -845,7 +1054,114 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
     const [customers, jobs, reminders, trucks, crew] = await Promise.all(
       ["customer", "job", "reminder", "truck", "crew"].map((k) => list(ctx, k)),
     );
-    return { customers, jobs, reminders, trucks, crew, payments: [] };
+    const { dashboardReviewMetrics } = await import("./growth-api");
+    return {
+      customers,
+      jobs,
+      reminders,
+      trucks,
+      crew,
+      payments: [],
+      reviews: await dashboardReviewMetrics(ctx.db, requireWs(ctx)),
+    };
+  }
+  if (head === "review-metrics" && method === "GET") {
+    const { dashboardReviewMetrics } = await import("./growth-api");
+    return dashboardReviewMetrics(ctx.db, requireWs(ctx));
+  }
+  if (head === "branch-performance" && method === "GET") {
+    if (!["admin", "office_admin"].includes(ctx.role ?? ""))
+      fail(403, "Only workspace managers can view the multi-branch roll-up");
+    const { branchPerformanceFor } = await import("./growth-api");
+    return branchPerformanceFor(ctx.db, requireWs(ctx));
+  }
+  if (head === "engage") {
+    const section = idRaw ?? "";
+    const sectionId = sub ? Number(sub) : NaN;
+    if (!["admin", "office_admin", "estimator", "dispatcher"].includes(ctx.role ?? ""))
+      fail(403, "Growth tools are for office staff");
+    const { reviewsOverview, createReviewRequest, dispatchCompletedReviews, marketingOverview, runReengagement } =
+      await import("./growth-api");
+    const ws = requireWs(ctx);
+    if (section === "reviews") {
+      if (method === "GET" && !sub) return reviewsOverview(ctx.db, ws);
+      if (method === "POST" && sub === "run")
+        return dispatchCompletedReviews(ctx.db, ws, ctx.userId, ctx.origin ?? "https://invalid.local");
+      if (method === "PATCH" && sectionId) {
+        const { resolveReviewEscalation } = await import("./growth-api");
+        return resolveReviewEscalation(ctx.db, ws, sectionId);
+      }
+      if (method === "POST" && !sub)
+        return createReviewRequest(ctx.db, ws, ctx.userId, ctx.origin ?? "https://invalid.local", (await body()) as never);
+    }
+    if (section === "marketing" && method === "GET")
+      return marketingOverview(ctx.db, ws, ctx.origin ?? "https://invalid.local");
+    if (section === "followups" && method === "POST" && sub === "run") {
+      const parsed = (await body()) as { campaignId?: unknown };
+      const campaignId = parsed?.campaignId == null ? null : Number(parsed.campaignId) || null;
+      return runReengagement(ctx.db, ws, ctx.userId, ctx.origin ?? "https://invalid.local", campaignId);
+    }
+    if (section === "campaigns") {
+      if (method === "GET" && !sub) return list(ctx, "campaign");
+      if (method === "POST" && !sub) return create(ctx, "campaign", await body());
+      if (method === "PATCH" && sectionId)
+        return update(ctx, "campaign", sectionId, await body());
+    }
+    if (section === "reports" && method === "GET") {
+      const [jobRows, customerRows, expenseRows, campaignRows] = await Promise.all([
+        list(ctx, "job"),
+        list(ctx, "customer"),
+        list(ctx, "expense"),
+        list(ctx, "campaign"),
+      ]);
+      const jobs = jobRows as Array<Record<string, unknown>>;
+      const customers = customerRows as Array<Record<string, unknown>>;
+      const expenses = expenseRows as Array<Record<string, unknown>>;
+      const campaigns = campaignRows as Array<Record<string, unknown>>;
+      const booked = jobs.filter((job) => !["lead", "estimate", "lost", "cancelled"].includes(String(job.status)));
+      const completed = jobs.filter((job) => String(job.status) === "completed");
+      const revenueCents = completed.reduce((sum, job) => sum + Math.round(Number(job.finalTotal ?? job.total ?? 0) * 100), 0);
+      const expenseCents = expenses.reduce((sum, expense) => sum + Number(expense.amountCents || 0), 0);
+      const sourceRows = new Map<string, { source: string; leads: number; booked: number; collectedCents: number; spendCents: number }>();
+      for (const customer of customers) {
+        const key = String(customer.source || "Unattributed");
+        const row = sourceRows.get(key) ?? { source: key, leads: 0, booked: 0, collectedCents: 0, spendCents: 0 };
+        row.leads += 1;
+        const customerJobs = booked.filter((job) => Number(job.customerId) === Number(customer.id));
+        row.booked += customerJobs.length;
+        row.collectedCents += customerJobs
+          .filter((job) => String(job.invoiceStatus) === "paid")
+          .reduce((sum, job) => sum + Math.round(Number(job.finalTotal ?? job.total ?? 0) * 100), 0);
+        sourceRows.set(key, row);
+      }
+      for (const campaign of campaigns) {
+        const key = String(campaign.source || campaign.name || "Unattributed");
+        const row = sourceRows.get(key) ?? { source: key, leads: 0, booked: 0, collectedCents: 0, spendCents: 0 };
+        row.spendCents += Number(campaign.spendCents || 0);
+        sourceRows.set(key, row);
+      }
+      return {
+        kpis: {
+          leads: customers.length,
+          booked: booked.length,
+          completed: completed.length,
+          estimatedRevenueCents: revenueCents,
+          collectedRevenueCents: revenueCents,
+          expenseCents,
+          netContributionCents: revenueCents - expenseCents,
+        },
+        funnel: ["lead", "estimate", "booked", "completed"].map((stage) => ({
+          stage,
+          count: jobs.filter((job) => String(job.status) === stage).length,
+        })),
+        sources: [...sourceRows.values()].map((row) => ({
+          ...row,
+          costPerLeadCents: row.leads ? Math.round(row.spendCents / row.leads) : null,
+          roas: row.spendCents ? row.collectedCents / row.spendCents : null,
+        })),
+        months: [],
+      };
+    }
   }
   if (head === "pricing") {
     if (method === "GET") return pricingFor(ctx);
@@ -1218,10 +1534,56 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
       getOne,
       update,
       saveData,
+      create,
       requireWs,
       fail,
       toRecord,
     });
+  // Bill of lading: the document is workspace-scoped, signing is idempotent per role,
+  // and the generated pdf-lib file is attached to the job's documents map.
+  if (head === "ops" && idRaw === "bol") {
+    const jobId = Number(parts[2]);
+    if (!Number.isInteger(jobId) || jobId <= 0) fail(400, "Unknown job");
+    const deps = {
+      db: ctx.db,
+      wsId: requireWs(ctx),
+      userId: ctx.userId,
+      getJob: (id: number) => getOne(ctx, "job", id),
+      saveJob: (id: number, patch: Record<string, unknown>) => saveData(ctx, id, patch),
+    };
+    const mod = await import("./bol-api");
+    if (method === "GET" && parts[3] === "pdf") return mod.streamBolPdf(deps, jobId);
+    if (method === "GET") return mod.getBol(deps, jobId);
+    if (method === "POST" && parts[3] === "sign") {
+      if (!["admin", "office_admin", "dispatcher", "crew"].includes(ctx.role ?? ""))
+        fail(403, "Only dispatch or crew can sign a bill of lading");
+      return mod.signBol(deps, jobId, (await body()) as { role?: unknown; signature?: unknown; signerName?: unknown });
+    }
+    fail(404, "Unknown bill of lading action");
+  }
+  // Recurring storage billing: office staff can review invoices, generate the current
+  // month idempotently and mark an invoice paid. Delivery results stay on each invoice.
+  if (head === "ops" && idRaw === "storage-billing") {
+    const ws = requireWs(ctx);
+    if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
+      fail(403, "Storage billing is for office staff");
+    const mod = await import("./storage-billing-api");
+    if (method === "GET" && !sub) return mod.storageBillingOverview(ctx.db, ws);
+    if (method === "POST" && sub === "run") {
+      if (!["admin", "office_admin"].includes(ctx.role ?? ""))
+        fail(403, "Only office admins can run monthly storage billing");
+      return mod.runStorageBilling(ctx.db, ws, ctx.origin ?? "https://invalid.local");
+    }
+    if (method === "PATCH" && sub) {
+      if (!["admin", "office_admin"].includes(ctx.role ?? ""))
+        fail(403, "Only office admins can update storage invoices");
+      const invoiceId = Number(sub);
+      if (!Number.isInteger(invoiceId) || invoiceId <= 0) fail(400, "Unknown storage invoice");
+      const input = (await body()) as { paid?: unknown };
+      return mod.markStorageInvoicePaid(ctx.db, ws, invoiceId, input.paid !== false);
+    }
+    fail(404, "Unknown storage billing action");
+  }
   // Vaults hold customer belongings and contact details, so they stay with office staff.
   if (head === "vaults" && !["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
     fail(403, "Storage vaults are for office staff");
@@ -1623,9 +1985,22 @@ export async function handleCrm(request: Request, splat: string) {
     const email = (verifiedClaims["email"] as string | undefined) ?? "";
     const wsHeader = Number(request.headers.get("x-workspace-id")) || null;
     let role: string | null = null;
+    let branchId: number | null = Number(request.headers.get("x-branch-id")) || null;
     if (wsHeader) {
       const { data } = await db.rpc("workspace_role", { _ws: wsHeader });
       role = (data as string | null) ?? null;
+    }
+    if (!role) branchId = null;
+    if (branchId && wsHeader) {
+      const { data: branch } = await db
+        .from("workspace_records")
+        .select("id")
+        .eq("workspace_id", wsHeader)
+        .eq("kind", "branch")
+        .eq("id", branchId)
+        .maybeSingle();
+      // A deleted or stale branch context is ignored; the shell will clear it.
+      if (!branch) branchId = null;
     }
     const parts = splat.split("/").filter(Boolean);
     if (role && request.method !== "GET" && parts[0] !== "workspaces") {
@@ -1640,6 +2015,7 @@ export async function handleCrm(request: Request, splat: string) {
         email,
         wsId: role ? wsHeader : null,
         role,
+        branchId,
         q: new URL(request.url).searchParams,
         origin: new URL(request.url).origin,
       },

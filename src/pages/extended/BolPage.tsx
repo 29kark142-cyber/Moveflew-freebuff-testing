@@ -1,305 +1,266 @@
-import { FileText, Printer, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Check, FileText, Loader2, PenLine, RefreshCw } from "lucide-react";
 import type { Job } from "@shared/crm";
 import type { ModuleProps } from "@shared/expansion";
+import type { BolDocument, BolRole } from "@shared/bol";
 import { crm } from "@/lib/crm";
-import { getLocale, useI18n } from "@/lib/i18n";
-import {
-  ErrorNotice,
-  LoadingBlock,
-  useRemote,
-} from "@/components/workspace/WorkspaceUI";
-import { ops, type BolDocument } from "@/lib/ops-api";
-import {
-  bolRoles,
-  canAccess,
-  jobLabel,
-  PageHead,
-  PermissionNotice,
-  shortDate,
-} from "./operations-common";
+import { getLocale } from "@/lib/i18n";
+import { ErrorNotice, LoadingBlock } from "@/components/workspace/WorkspaceUI";
+import SignaturePad from "@/components/workspace/SignaturePad";
+import { ops } from "@/lib/ops-api";
+import { bolRoles, canAccess, jobLabel, PageHead, PermissionNotice, shortDate } from "./operations-common";
 
 const jobFromPath = (path: string) => {
   const match = /^\/app\/jobs\/(\d+)\/bol\/?$/.exec(path);
   return match ? Number(match[1]) : null;
 };
+const text = (value: unknown) => (typeof value === "string" ? value : "");
+const money = (cents: number) =>
+  new Intl.NumberFormat(getLocale(), { style: "currency", currency: "USD" }).format(cents / 100);
+
 export function BolPage({ role, path }: ModuleProps) {
-  const { t } = useI18n();
   if (!canAccess(role, bolRoles))
     return (
       <>
-        <PageHead
-          heading="Bill of lading"
-          caption="Printable moving record for an authorized job."
-        />
+        <PageHead heading="Bill of lading" caption="Printable moving record for an authorized job." />
         <PermissionNotice roles={bolRoles} />
       </>
     );
-  return <BolContent path={path} />;
+  return <BolContent path={path} canSign={["admin", "office_admin", "dispatcher", "crew"].includes(role)} />;
 }
-function BolContent({ path }: { path: string }) {
-  const { t } = useI18n();
+
+function BolContent({ path, canSign }: { path: string; canSign: boolean }) {
   const exact = jobFromPath(path);
   const [selected, setSelected] = useState<number | null>(exact);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [document, setDocument] = useState<BolDocument | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
   useEffect(() => setSelected(exact), [exact]);
-  const jobs = useRemote(() => crm.jobs(), []);
-  const document = useRemote(
-    () => (selected ? ops.bol(selected) : Promise.resolve(null)),
-    [selected]
-  );
-  if (jobs.loading || (selected !== null && document.loading))
-    return <LoadingBlock label={t("Loading bill of lading…")} />;
-  if (jobs.error)
-    return (
-      <>
-        <PageHead
-          heading="Bill of lading"
-          caption="Printable moving record for an authorized job."
-        />
-        <ErrorNotice error={jobs.error} retry={() => void jobs.refresh()} />
-      </>
-    );
+
+  const load = useCallback(async () => {
+    if (!selected) {
+      setDocument(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      setDocument(await ops.bol(selected));
+      setError("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not load the bill of lading.");
+    } finally {
+      setLoading(false);
+    }
+  }, [selected]);
+
+  useEffect(() => {
+    void crm.jobs().then(setJobs).catch(() => setJobs([]));
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const sign = async (role: BolRole, signature: string, signerName: string) => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      setDocument(await ops.signBol(selected, { role, signature, signerName }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not save the signature.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!exact)
     return (
       <div className="ops">
-        <PageHead
-          heading="Bill of lading"
-          caption="Choose an existing job to generate a printable record."
-        />
+        <PageHead heading="Bill of lading" caption="Choose an existing job to generate a compliant record." />
         <section className="ws-card ws-card-pad">
           <label className="ws-field">
-            <span>{t("Job")}</span>
-            <select
-              className="ws-select"
-              value={selected ?? ""}
-              onChange={e =>
-                setSelected(e.target.value ? Number(e.target.value) : null)
-              }
-            >
-              <option value="">{t("Choose a job")}</option>
-              {(jobs.data || []).map(job => (
-                <option key={job.id} value={job.id}>
-                  {jobLabel(job)}
-                </option>
-              ))}
+            <span>Job</span>
+            <select className="ws-select" value={selected ?? ""} onChange={(event) => setSelected(event.target.value ? Number(event.target.value) : null)}>
+              <option value="">Choose a job</option>
+              {jobs.map((job) => <option key={job.id} value={job.id}>{jobLabel(job)}</option>)}
             </select>
           </label>
-          {selected && Boolean(document.error) && (
-            <ErrorNotice
-              error={document.error}
-              retry={() => void document.refresh()}
-            />
-          )}{" "}
-          {document.data && (
-            <BolDocumentView
-              data={document.data}
-              onRefresh={document.refresh}
-            />
-          )}
+          {loading && selected && <LoadingBlock label="Loading bill of lading…" />}
+          {error && <ErrorNotice error={new Error(error)} retry={() => void load()} />}
+          {document && <BolDocumentView data={document} canSign={canSign} busy={busy} onSign={sign} onRefresh={load} />}
         </section>
       </div>
     );
-  if (document.error || !document.data)
+
+  if (loading) return <LoadingBlock label="Loading bill of lading…" />;
+  if (error || !document)
     return (
       <>
-        <PageHead
-          heading="Bill of lading"
-          caption="Printable moving record for an authorized job."
-        />
-        <ErrorNotice
-          error={document.error}
-          retry={() => void document.refresh()}
-        />
+        <PageHead heading="Bill of lading" caption="Printable moving record for an authorized job." />
+        <ErrorNotice error={new Error(error || "Bill of lading not found")} retry={() => void load()} />
       </>
     );
   return (
     <div className="ops">
       <PageHead
         heading="Bill of lading"
-        caption="Printable moving record loaded from the authorized job."
+        caption="Signed legal record for this job, with declared valuation and final pricing."
         actions={
           <div className="ops-no-print ws-row-actions">
-            <button className="ws-btn" onClick={() => void document.refresh()}>
-              <RefreshCw size={14} />
-              {t("Refresh")}
-            </button>
-            <button className="ws-btn primary" onClick={() => window.print()}>
-              <Printer size={15} />
-              {t("Print")}
+            <button className="ws-btn" onClick={() => void load()} disabled={busy}>
+              <RefreshCw size={14} /> Refresh
             </button>
           </div>
         }
       />
-      <BolDocumentView data={document.data} onRefresh={document.refresh} />
+      <BolDocumentView data={document} canSign={canSign} busy={busy} onSign={sign} onRefresh={load} />
     </div>
   );
 }
-const string = (value: unknown) => (typeof value === "string" ? value : "");
-const value = (row: Record<string, unknown>, key: string) => string(row[key]);
-function SignatureEvidence({
-  label,
-  signature,
+
+function BolSignoff({
+  role,
+  existing,
+  busy,
+  onSign,
 }: {
-  label: string;
-  signature: unknown;
+  role: BolRole;
+  existing: BolDocument["signatures"]["origin"];
+  busy: boolean;
+  onSign: (role: BolRole, signature: string, signerName: string) => Promise<void>;
 }) {
-  const { t } = useI18n();
-  const source = string(signature);
-  const image = /^(data:image\/(png|jpeg|jpg|webp);base64,|https:\/\/)/i.test(
-    source
-  )
-    ? source
-    : "";
+  const [name, setName] = useState("");
+  const [signature, setSignature] = useState<string | null>(null);
+  const [ack, setAck] = useState(false);
+  const label = role === "origin" ? "Origin pickup sign-off" : "Destination delivery sign-off";
+  if (existing)
+    return (
+      <div className="rounded-xl border border-border p-3">
+        <b className="flex items-center gap-1 text-sm"><Check size={14} /> {label}</b>
+        <p className="text-xs text-muted-foreground">{existing.signerName || "Customer"} · {existing.signedAt ? new Date(existing.signedAt).toLocaleString() : "Signed"}</p>
+        <img src={existing.signature} alt={label} className="mt-2 h-24 w-full rounded border border-border object-contain" />
+      </div>
+    );
   return (
-    <div className="ops-signature-label">
-      <b>{t(label)}</b>
-      {image ? (
-        <img
-          className="ops-signature-image"
-          src={image}
-          alt={t("Saved signature")}
-        />
-      ) : (
-        <span>{source ? t("On file") : t("Not on file")}</span>
-      )}
+    <div className="rounded-xl border border-border p-3 space-y-2">
+      <b className="flex items-center gap-1 text-sm"><PenLine size={14} /> {label}</b>
+      <label className="block text-sm">
+        Signer name
+        <input className="ws-input" value={name} maxLength={120} onChange={(event) => setName(event.target.value)} placeholder="Customer name" />
+      </label>
+      <SignaturePad onChange={setSignature} label={`Sign ${label.toLowerCase()}`} disabled={busy} />
+      <label className="flex items-start gap-2 text-xs">
+        <input type="checkbox" checked={ack} onChange={(event) => setAck(event.target.checked)} />
+        I reviewed the shipment, declared valuation, final pricing and contract terms for this {role}.
+      </label>
+      <button
+        className="ws-btn primary"
+        disabled={!signature || !name.trim() || !ack || busy}
+        onClick={() => signature && void onSign(role, signature, name.trim())}
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Sign &amp; generate PDF
+      </button>
     </div>
   );
 }
+
 function BolDocumentView({
   data,
+  canSign,
+  busy,
+  onSign,
   onRefresh,
 }: {
   data: BolDocument;
+  canSign: boolean;
+  busy: boolean;
+  onSign: (role: BolRole, signature: string, signerName: string) => Promise<void>;
   onRefresh: () => Promise<void>;
 }) {
-  const { t } = useI18n();
-  const job = data.job,
-    customer = data.customer,
-    company = data.company;
+  const job = data.job;
   const generated = new Date(data.generatedAt);
-  const date = Number.isNaN(generated.getTime())
-    ? data.generatedAt
-    : new Intl.DateTimeFormat(getLocale(), {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(generated);
-  const inventory = Array.isArray(job.inventory)
-    ? (job.inventory as Array<Record<string, unknown>>)
-    : [];
+  const date = Number.isNaN(generated.getTime()) ? data.generatedAt : generated.toLocaleString();
   return (
-    <article className="ws-card ws-card-pad ops-print-doc">
+    <article className="ws-card ws-card-pad ops-print-doc space-y-4">
       <header className="ops-print-doc__head">
         <div>
-          <span className="ws-eyebrow">{t("Moving record")}</span>
-          <h2>{t("Bill of lading")}</h2>
-          <p>{value(company, "name")}</p>
-          {value(company, "phone") && <p>{value(company, "phone")}</p>}
+          <span className="ws-eyebrow">Legal moving record</span>
+          <h2>Bill of Lading</h2>
+          <p>{text(job["companyName"]) || "MoveFlew"}</p>
         </div>
         <div>
-          <span className="ops-stamp">{t("Generated record")}</span>
-          <p>
-            {t("Job")} #{String(job.id || "")}
-          </p>
+          <span className="ops-stamp">{data.pdf ? "Signed PDF attached" : "Draft — signatures pending"}</span>
+          <p>Job #{String(job["id"] ?? "")}</p>
           <p>{date}</p>
         </div>
       </header>
-      <p className="ops-legal-note">
-        {t(
-          "Recordkeeping only. This generated moving record is not legal certification and does not replace any required local documents."
-        )}
-      </p>
+
       <div className="ops-print-grid">
         <section>
-          <h3>{t("Customer")}</h3>
-          <p>
-            <b>{value(customer, "name") || value(job, "customerName")}</b>
-          </p>
-          <p>{value(customer, "email")}</p>
-          <p>{value(customer, "phone")}</p>
-          <p>{value(customer, "address")}</p>
+          <h3>Customer</h3>
+          <p><b>{text(job["customerName"]) || text(job["title"])}</b></p>
+          <p>{text(job["customerEmail"])}</p>
+          <p>{text(job["customerPhone"])}</p>
         </section>
         <section>
-          <h3>{t("Move details")}</h3>
-          <p>
-            <b>{value(job, "title")}</b>
-          </p>
-          <p>{shortDate(value(job, "moveDate"))}</p>
-          <p>
-            {t("Pickup")}: {value(job, "origin")}
-          </p>
-          <p>
-            {t("Delivery")}: {value(job, "destination")}
-          </p>
-          <p>
-            {t("Truck")}: {value(job, "truckName")}
-          </p>
+          <h3>Move details</h3>
+          <p><b>{text(job["title"])}</b></p>
+          <p>{shortDate(text(job["moveDate"]))}</p>
+          <p>Pickup: {text(job["origin"])}</p>
+          <p>Delivery: {text(job["destination"])}</p>
         </section>
       </div>
+
       <section>
-        <h3>{t("Inventory")}</h3>
-        {inventory.length ? (
+        <h3>Contract terms</h3>
+        <p className="ops-legal-note">{data.terms}</p>
+      </section>
+
+      <section>
+        <h3>Itemised declared valuation</h3>
+        {data.valuation.lines.length === 0 ? <p>No shipment inventory is saved for this job.</p> : (
           <div className="ws-table-wrap">
             <table className="ws-table">
-              <thead>
-                <tr>
-                  <th>{t("Item")}</th>
-                  <th>{t("Quantity")}</th>
-                  <th>{t("Cubic feet")}</th>
-                  <th>{t("Weight (lb)")}</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Item</th><th>Qty</th><th>Weight (lb)</th><th>Declared value</th></tr></thead>
               <tbody>
-                {inventory.map((item, index) => (
-                  <tr key={index}>
-                    <td>{value(item, "name")}</td>
-                    <td>{String(item.quantity ?? "")}</td>
-                    <td>{String(item.cuft ?? "")}</td>
-                    <td>{String(item.weight ?? "")}</td>
+                {data.valuation.lines.map((item, index) => (
+                  <tr key={`${item.name}-${index}`}>
+                    <td>{item.name}</td><td>{item.quantity}</td><td>{item.weight}</td><td>{money(item.totalCents)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <p>{t("No inventory is saved for this job.")}</p>
         )}
+        <p className="text-sm font-medium">Total declared: {money(data.valuation.totalCents)}{!data.valuation.declared && " (no value declared)"}</p>
       </section>
+
       <section>
-        <h3>{t("Condition and damage notes")}</h3>
-        {data.damages.length ? (
-          <div className="ops-timeline">
-            {data.damages.map((damage, index) => (
-              <div
-                className="ops-timeline__row"
-                key={String(damage.id ?? index)}
-              >
-                {value(damage, "notes") || value(damage, "note")}
-                <small>{value(damage, "phase")}</small>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p>{t("No damage entries are saved for this job.")}</p>
-        )}
+        <h3>Final pricing</h3>
+        <dl className="grid gap-1 text-sm sm:grid-cols-2">
+          <div><dt className="text-muted-foreground">Estimated charges</dt><dd>{money(data.pricing.estimatedCents)}</dd></div>
+          <div><dt className="text-muted-foreground">Fees</dt><dd>{money(data.pricing.feesCents)}</dd></div>
+          <div><dt className="text-muted-foreground">Discount</dt><dd>{money(data.pricing.discountCents)}</dd></div>
+          <div><dt className="text-muted-foreground">Surge</dt><dd>{money(data.pricing.surgeCents)}</dd></div>
+          <div><dt className="font-medium">Final amount</dt><dd className="font-bold">{money(data.pricing.finalCents)}</dd></div>
+          <div><dt className="text-muted-foreground">Balance due</dt><dd>{money(data.pricing.balanceCents)}</dd></div>
+        </dl>
       </section>
-      <section>
-        <h3>{t("Terms and notes")}</h3>
-        <p>{t(data.terms)}</p>
-        <p>{value(job, "originNotes")}</p>
-        <p>{value(job, "destinationNotes")}</p>
+
+      <section className="space-y-2">
+        <h3>Pickup and delivery sign-offs</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <BolSignoff role="origin" existing={data.signatures.origin} busy={busy} onSign={onSign} />
+          <BolSignoff role="delivery" existing={data.signatures.delivery} busy={busy} onSign={onSign} />
+        </div>
+        {!canSign && <p className="text-sm text-muted-foreground">Only dispatch and crew can add signatures.</p>}
+        {data.pdf && <p className="flex items-center gap-1 text-xs text-muted-foreground"><FileText size={13} /> Signed PDF attached to this job’s documents.</p>}
       </section>
-      <div className="ops-signatures">
-        <SignatureEvidence
-          label="Customer signature"
-          signature={job.signature}
-        />
-        <SignatureEvidence
-          label="Completion signature"
-          signature={job.completedSignature}
-        />
+      <div className="ops-no-print">
+        <button className="ws-btn" onClick={() => void onRefresh()}><RefreshCw size={14} /> Reload signed record</button>
       </div>
     </article>
   );

@@ -734,8 +734,13 @@ export default function SchedulePage({
               >
                 <option value="">{tx("No truck", "Без грузовика")}</option>
                 {trucks.map((truck) => (
-                  <option key={truck.id} value={truck.id}>
+                  <option
+                    key={truck.id}
+                    value={truck.id}
+                    disabled={truck.status === "maintenance"}
+                  >
                     {truck.name} · {truck.status}
+                    {truck.status === "maintenance" ? " — unavailable" : ""}
                   </option>
                 ))}
               </select>

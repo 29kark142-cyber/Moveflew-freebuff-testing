@@ -1,11 +1,19 @@
 import { clampDiscountPercent } from "./route-pricing";
 import type { SurchargeSettings } from "./surcharges";
+import {
+  DEFAULT_SURGE_SETTINGS,
+  surgeFor,
+  type QuoteSurgeSnapshot,
+  type SurgeResult,
+  type SurgeSettings,
+} from "./surge";
 import type { JobActivityEvent } from "./job-activity";
 import type { CrewShift } from "./shift";
 import type { PreMoveReminderState } from "./reminders";
 import type { MoveChecklistState } from "./move-checklist";
 import type { DriverCheckin } from "./checkin";
 import type { JobVaultRecord } from "./vault-photos";
+import type { MaintenanceEntry } from "./fleet";
 
 export type WorkspaceRole =
   | "admin"
@@ -36,6 +44,8 @@ export type InventoryEntry = {
   heavy?: boolean;
   /** Per-item override of the configured heavy item fee. */
   heavyFee?: number;
+  /** Customer-declared replacement value in dollars, printed on the BOL. */
+  declaredValue?: number;
 };
 export type Fee = { name: string; amount: number };
 export type Job = {
@@ -76,6 +86,8 @@ export type Job = {
   inventory: InventoryEntry[];
   fees: Fee[];
   total: number;
+  /** Server-written snapshot of the surge applied to this quote. */
+  quoteSurge?: QuoteSurgeSnapshot | null;
   truckId: number | null;
   crewIds: number[];
   requiredSkill: number;
@@ -135,6 +147,15 @@ export type Truck = {
   weightLimit: number;
   dimensions: string;
   status: string;
+  /** Current odometer reading in miles. */
+  mileage?: number;
+  /** Miles between scheduled services. */
+  serviceIntervalMiles?: number;
+  lastServiceMiles?: number;
+  lastServiceDate?: string;
+  nextServiceDate?: string;
+  maintenanceNotes?: string;
+  maintenanceLog?: MaintenanceEntry[];
 };
 export type CrewMember = {
   id: number;
@@ -190,6 +211,8 @@ export type Pricing = {
   weightRate: number;
   mileRate: number;
   materials: { name: string; price: number }[];
+  /** Peak-season, weekend and end-of-month automatic pricing. */
+  surge?: SurgeSettings;
 };
 export const DEFAULT_PRICING: Pricing = {
   rates: [50, 130, 180, 230, 280, 330],
@@ -204,6 +227,7 @@ export const DEFAULT_PRICING: Pricing = {
     { name: "Medium box", price: 5 },
     { name: "Wardrobe box", price: 18 },
   ],
+  surge: DEFAULT_SURGE_SETTINGS,
 };
 export const INVENTORY: Omit<InventoryEntry, "quantity">[] = [
   { key: "sofa", name: "Sofa", room: "Living room", cuft: 50, weight: 350 },
@@ -303,6 +327,35 @@ export function calculateQuote(
   // sheet's preview, the saved total and the invoice all derive from one number.
   const discount = clampDiscountPercent(j.discountPercent);
   return Math.round(subtotal * (1 - discount / 100) * 100) / 100;
+}
+export type QuoteWithSurge = {
+  /** Discounted estimate subtotal before surge pricing. */
+  base: number;
+  surge: SurgeResult;
+  total: number;
+};
+export function calculateQuoteWithSurge(
+  j: Pick<
+    Job,
+    | "pricingMode"
+    | "hourlyRate"
+    | "estimatedHours"
+    | "distanceMiles"
+    | "travelFee"
+    | "weightRate"
+    | "mileRate"
+    | "inventory"
+    | "fees"
+    | "discountPercent"
+    | "moveDate"
+  >,
+  minimumHours = 2.5,
+  settings: SurgeSettings = DEFAULT_SURGE_SETTINGS,
+  weekendPercent = 0,
+): QuoteWithSurge {
+  const base = calculateQuote(j, minimumHours);
+  const surge = surgeFor(j.moveDate, base, settings, weekendPercent);
+  return { base, surge, total: surge.total };
 }
 export function overlaps(
   a: Pick<Job, "moveDate" | "startHour" | "duration">,

@@ -10,6 +10,7 @@ import type {
   Vault,
 } from "@shared/expansion";
 import { crmFetch } from "@/lib/crm";
+import type { BolDocument } from "@shared/bol";
 
 const json = (method: string, value?: unknown): RequestInit => ({
   method,
@@ -66,15 +67,7 @@ export type PayrollReport = {
   totalCents: number;
   disclaimer: string;
 };
-export type BolDocument = {
-  job: Record<string, unknown>;
-  customer: Record<string, unknown>;
-  company: Record<string, unknown>;
-  damages: Array<Record<string, unknown>>;
-  terms: string;
-  generatedAt: string;
-  recordkeepingOnly: boolean;
-};
+export type { BolDocument } from "@shared/bol";
 
 export const ops = {
   facilities: () => crmFetch<Facility[]>("/ops/facilities"),
@@ -178,4 +171,6 @@ export const ops = {
   revokeUnavailability: (id: number) =>
     crmFetch<void>(`/ops/unavailability/${id}`, { method: "DELETE" }),
   bol: (jobId: number) => crmFetch<BolDocument>(`/ops/bol/${jobId}`),
+  signBol: (jobId: number, value: { role: "origin" | "delivery"; signature: string; signerName: string }) =>
+    crmFetch<BolDocument>(`/ops/bol/${jobId}/sign`, json("POST", value)),
 };

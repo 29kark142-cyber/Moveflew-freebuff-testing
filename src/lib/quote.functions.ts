@@ -3,6 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { depositRuleSchema } from "./proposal-rules";
 import { clampDiscountPercent } from "@/shared/route-pricing";
+import { parseQuoteSurge } from "@/shared/surge";
 import { jobReference } from "@/shared/tracking";
 import { QUOTE_TOKEN_RE } from "@/shared/quote-dispatch";
 import { quoteAcceptance, quoteDepositCents } from "@/shared/quote-accept";
@@ -37,6 +38,8 @@ export type PublicQuote = {
   distanceMiles: number;
   travelMinutes: number;
   lines: PublicQuoteLine[];
+  /** Customer-visible breakdown of the surge stored when the quote was saved. */
+  surge: { percent: number; amount: number; lines: PublicQuoteLine[] } | null;
   discountPercent: number;
   total: number;
   packingSubtotal: number;
@@ -101,10 +104,12 @@ export const readQuote = createServerFn({ method: "GET" })
     const subtotal = base + travelFee + fees.reduce((sum, fee) => sum + fee.amount, 0);
     const round = (value: number) => Math.round(value * 100) / 100;
     const computed = round(subtotal * (1 - discountPercent / 100));
+    const surgeSnapshot = parseQuoteSurge(job["quoteSurge"]);
+    const computedWithSurge = round(computed + (surgeSnapshot?.amount ?? 0));
     // The saved estimate total is what the office sees and what the deposit is calculated
     // from server-side, so the portal must quote exactly that number when one is stored.
     const storedTotal = num(job["total"]);
-    const total = storedTotal > 0 ? round(storedTotal) : computed;
+    const total = storedTotal > 0 ? round(storedTotal) : computedWithSurge;
     // Packing is priced from the shared catalog; a stored subtotal is never trusted.
     const packing = parsePackingSelection(job["packingSelection"]);
     const packingItems = packingLines(packing);
@@ -117,6 +122,10 @@ export const readQuote = createServerFn({ method: "GET" })
       },
       ...(travelFee > 0 ? [{ label: "Travel fee", amount: round(travelFee) }] : []),
       ...fees,
+      ...(surgeSnapshot?.lines ?? []).map((line) => ({
+        label: line.label,
+        amount: round(line.amount),
+      })),
       ...packingItems.map((item) => ({
         label: item.quantity > 1 ? `${item.label} × ${item.quantity}` : item.label,
         amount: round(item.amountCents / 100),
@@ -156,6 +165,16 @@ export const readQuote = createServerFn({ method: "GET" })
       distanceMiles: num(job["distanceMiles"]),
       travelMinutes: num(job["travelMinutes"]),
       lines,
+      surge: surgeSnapshot
+        ? {
+            percent: surgeSnapshot.percent,
+            amount: round(surgeSnapshot.amount),
+            lines: surgeSnapshot.lines.map((line) => ({
+              label: line.label,
+              amount: round(line.amount),
+            })),
+          }
+        : null,
       discountPercent,
       total: quotedTotal,
       packingSubtotal: packingTotal,

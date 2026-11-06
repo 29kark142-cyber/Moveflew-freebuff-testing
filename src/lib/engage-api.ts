@@ -5,7 +5,25 @@ import type {
   ReviewRequest,
   Webhook,
 } from "@shared/expansion";
+import type { MarketingRates, MarketingTrigger } from "@shared/marketing";
+import type { ReviewMetrics } from "@shared/reviews";
 import { crmFetch } from "@/lib/crm";
+
+async function publicJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  headers.set("Accept", "application/json");
+  if (init.body) headers.set("Content-Type", "application/json");
+  const response = await fetch(path, { ...init, headers, credentials: "omit" });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(
+      body && typeof body === "object" && "error" in body && typeof body.error === "string"
+        ? body.error
+        : `Request failed (${response.status})`,
+    );
+  }
+  return body as T;
+}
 
 const json = (method: string, value?: unknown): RequestInit => ({
   method,
@@ -127,7 +145,35 @@ export type PublicReview = {
   status?: string;
   rating?: number | null;
   feedback?: string;
-  publicReviewUrl?: string;
+  redirectUrl?: string | null;
+  escalated?: boolean;
+  message?: string;
+};
+
+export type MarketingTouch = {
+  id: number;
+  customerId: number;
+  campaignId: number | null;
+  channel: string;
+  sent: boolean;
+  openedAt: string | null;
+  clickedAt: string | null;
+  convertedAt: string | null;
+  createdAt: string;
+};
+
+export type MarketingOverview = {
+  triggers: MarketingTrigger[];
+  campaigns: Campaign[];
+  touches: MarketingTouch[];
+  rates: MarketingRates;
+  providers: { email: boolean; sms: boolean };
+};
+
+export type ReviewsOverview = {
+  reviews: ReviewRequest[];
+  metrics: ReviewMetrics;
+  googleReviewUrl: string;
 };
 
 export const engage = {
@@ -153,12 +199,20 @@ export const engage = {
     crmFetch<Campaign>("/engage/campaigns", json("POST", value)),
   updateCampaign: (id: number, value: Partial<Omit<Campaign, "id">>) =>
     crmFetch<Campaign>(`/engage/campaigns/${id}`, json("PATCH", value)),
-  runFollowups: () =>
-    crmFetch<Record<string, unknown>>("/engage/followups/run", json("POST")),
+  marketing: () => crmFetch<MarketingOverview>("/engage/marketing"),
+  runFollowups: (campaignId?: number | null) =>
+    crmFetch<Record<string, unknown>>(
+      "/engage/followups/run",
+      json("POST", campaignId ? { campaignId } : {})
+    ),
 
-  reviews: () => crmFetch<ReviewRequest[]>("/engage/reviews"),
+  reviews: () => crmFetch<ReviewsOverview>("/engage/reviews"),
+  runReviews: () =>
+    crmFetch<Record<string, unknown>>("/engage/reviews/run", json("POST")),
+  resolveReview: (id: number) =>
+    crmFetch<ReviewRequest>(`/engage/reviews/${id}`, json("PATCH", {})),
   createReview: (value: { customerId: number; jobId?: number }) =>
-    crmFetch<ReviewRequest & { token?: string; publicReviewUrl?: string }>(
+    crmFetch<ReviewRequest & { token?: string; url?: string }>(
       "/engage/reviews",
       json("POST", value)
     ),
@@ -261,18 +315,13 @@ export const engage = {
       true
     ),
   publicReview: (token: string) =>
-    crmFetch<PublicReview>(
-      `/engage/public/review/${encodeURIComponent(token)}`,
-      {},
-      true
-    ),
+    publicJson<PublicReview>(`/api/public/reviews/${encodeURIComponent(token)}`),
   submitPublicReview: (
     token: string,
     value: { rating: number; feedback: string }
   ) =>
-    crmFetch<PublicReview>(
-      `/engage/public/review/${encodeURIComponent(token)}`,
-      json("POST", value),
-      true
+    publicJson<PublicReview>(
+      `/api/public/reviews/${encodeURIComponent(token)}`,
+      json("POST", value)
     ),
 };

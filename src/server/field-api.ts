@@ -12,12 +12,14 @@ import { documentSchema, operationSchema, type FieldDocuments, type FieldSnapsho
 import { finalizeFieldSnapshot, prepareFieldPdf, streamFieldPdf } from './field-documents';
 import { appendJobActivity, jobActivity } from '../shared/job-activity';
 import { checklistProgress, completedPhases, isChecklistItem, milestoneUnlocked, normalizeChecklist, MOVE_CHECKLIST_PHASES } from '../shared/move-checklist';
+import { parseInspectionSubmission } from '../shared/fleet';
 
 type Rec = Record<string, unknown> & { id: number };
 type Helpers = {
   list: (ctx: Ctx, kind: string) => Promise<unknown[]>;
   getOne: (ctx: Ctx, kind: string, id: number) => Promise<Row>;
   update: (ctx: Ctx, kind: string, id: number, body: unknown) => Promise<unknown>;
+  create: (ctx: Ctx, kind: string, body: unknown) => Promise<unknown>;
   saveData: (ctx: Ctx, id: number, patch: Record<string, unknown>) => Promise<Rec>;
   requireWs: (ctx: Ctx) => number;
   fail: (status: number, message: string) => never;
@@ -89,6 +91,42 @@ export async function fieldRoute(ctx: Ctx, method: string, parts: string[], body
     };
   }
 
+  if (head === "trucks" && !idRaw && method === "GET") {
+    return ((await h.list(ctx, "truck")) as Rec[]).map((truck) => ({
+      id: truck.id,
+      name: String(truck["name"] ?? ""),
+      plate: String(truck["plate"] ?? ""),
+      status: String(truck["status"] ?? ""),
+      mileage: Number(truck["mileage"]) || 0,
+      serviceIntervalMiles: Number(truck["serviceIntervalMiles"]) || 0,
+      nextServiceDate: String(truck["nextServiceDate"] ?? ""),
+    }));
+  }
+
+  if (head === "trucks" && idRaw && sub === "inspection" && method === "POST") {
+    const truckId = Number(idRaw);
+    if (!Number.isInteger(truckId) || truckId <= 0) h.fail(404, "Not found");
+    const self = await me(ctx, h);
+    if (!self && !office)
+      h.fail(403, "Only assigned crew can record a pre-trip inspection");
+    const truck = ((await h.list(ctx, "truck")) as Rec[]).find(
+      (entry) => entry.id === truckId,
+    );
+    if (!truck) h.fail(404, "That truck is not in this workspace");
+    const submission = parseInspectionSubmission(await body());
+    if (!submission) h.fail(400, "Complete every pre-trip checklist item");
+    return h.create(ctx, "inspection", {
+      truckId,
+      truckName: String(truck["name"] ?? ""),
+      driverId: self?.id ?? null,
+      driverName: self ? String(self["name"] ?? "") : ctx.email,
+      date: new Date().toISOString().slice(0, 10),
+      items: submission.items,
+      passed: submission.items.every((item) => item.ok),
+      notes: submission.notes,
+    });
+  }
+
   if (head === "jobs" && !idRaw && method === "GET") {
     const date = ctx.q?.get("date") ?? "";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return h.fail(400, "Choose a day");
@@ -145,7 +183,16 @@ export async function fieldRoute(ctx: Ctx, method: string, parts: string[], body
       const bill = finalBill(job, hours);
       Object.assign(patch, { clockOut: at, status: "completed", billableHours: hours, actualHours: hours, finalBill: bill, finalTotal: bill.labor + bill.travel + bill.fees });
     }
-    return view(await h.saveData(ctx, id, patch));
+    const saved = await h.saveData(ctx, id, patch);
+    if (patch["status"] === "completed" && ctx.origin) {
+      try {
+        const { ensureReviewForJob } = await import("./growth-api");
+        await ensureReviewForJob(ctx.db, Number(ctx.wsId), ctx.userId, ctx.origin, { id, data: saved });
+      } catch (error) {
+        console.error("Automatic review request failed", error);
+      }
+    }
+    return view(saved);
   }
 
   // Structured move-day checklist. Items are ticked one at a time so an offline replay can be

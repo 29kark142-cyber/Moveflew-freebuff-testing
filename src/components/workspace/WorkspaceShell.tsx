@@ -31,7 +31,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
-import type { Workspace } from "@/lib/crm";
+import type { Branch } from "@shared/branches";
+import { crm, getBranchId, setBranchId, type Workspace } from "@/lib/crm";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { FeedbackButton } from "./BetaTools";
@@ -78,6 +79,13 @@ const NAV: NavigationItem[] = [
     label: "Help center",
     icon: BookOpen,
     group: "Workspace",
+  },
+  {
+    href: "/app/branches",
+    label: "Branches",
+    icon: Building2,
+    group: "Workspace",
+    roles: finance,
   },
   {
     href: "/app/leads",
@@ -351,6 +359,42 @@ export default function WorkspaceShell({
   const { t } = useI18n();
   const [open, setOpen] = useState(false),
     [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [branchId, setBranch] = useState<number | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  useEffect(() => {
+    if (!finance.includes(role)) {
+      setBranches([]);
+      setBranch(null);
+      return;
+    }
+    let active = true;
+    void crm
+      .branches()
+      .then((list) => {
+        if (!active) return;
+        setBranches(list);
+        const stored = getBranchId();
+        const selected =
+          stored && list.some((branch) => branch.id === stored) ? stored : null;
+        // A branch deleted in another tab must not keep filtering this workspace.
+        if (stored && selected === null) setBranchId(null);
+        setBranch(selected);
+      })
+      .catch(() => {
+        if (!active) return;
+        setBranches([]);
+        setBranch(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [role, workspace.id]);
+  const changeBranch = (raw: string) => {
+    const next = raw ? Number(raw) : null;
+    setBranchId(next);
+    setBranch(next);
+    window.location.reload();
+  };
   const openRef = useRef(open);
   const drawerOpenedForTour = useRef(false);
   useEffect(() => {
@@ -508,6 +552,24 @@ export default function WorkspaceShell({
             <span>MoveFlew</span>
             <strong>{workspace.name}</strong>
           </div>
+          {branches.length > 0 && (
+            <label className="ws-branch-picker">
+              <Building2 size={15} />
+              <span className="ws-branch-picker__label">{t("Branch")}</span>
+              <select
+                aria-label={t("Branch context")}
+                value={branchId ?? ""}
+                onChange={(event) => changeBranch(event.target.value)}
+              >
+                <option value="">{t("All branches")}</option>
+                {branches.map(branch => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="ws-topbar__user">
             <button
               className="ws-btn ws-tour-trigger"

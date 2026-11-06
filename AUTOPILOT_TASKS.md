@@ -65,55 +65,55 @@
 ---
 
 ### Task 9: Dynamic Surge Pricing & Peak Season Matrix (`/app/settings/pricing`)
-- [ ] Add dynamic pricing rules UI at `/app/settings/pricing` to set peak season date ranges (e.g., end-of-month multipliers, weekend rate surcharges).
-- [ ] Update route pricing engine (`/api/crm/quote`) to automatically apply active surge multipliers during calculation.
-- [ ] Display transparent surge pricing breakdowns on customer quotes.
-- [ ] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
+- [x] Add dynamic pricing rules UI at `/app/settings/pricing` to set peak season date ranges (e.g., end-of-month multipliers, weekend rate surcharges).
+- [x] Update route pricing engine (`/api/crm/quote`) to automatically apply active surge multipliers during calculation.
+- [x] Display transparent surge pricing breakdowns on customer quotes.
+- [x] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
 
 ---
 
 ### Task 10: Fleet Maintenance Log & Vehicle Inspection Checklist (`/app/fleet`)
-- [ ] Build fleet management portal at `/app/fleet` tracking trucks, mileage, license plates, and service schedules.
-- [ ] Add pre-trip vehicle inspection checklist for drivers before shift start (oil, tire pressure, ramps, straps).
-- [ ] Block assignment of trucks marked "In Maintenance" on the Dispatcher Schedule (`/app/schedule`).
-- [ ] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
+- [x] Build fleet management portal at `/app/fleet` tracking trucks, mileage, license plates, and service schedules.
+- [x] Add pre-trip vehicle inspection checklist for drivers before shift start (oil, tire pressure, ramps, straps).
+- [x] Block assignment of trucks marked "In Maintenance" on the Dispatcher Schedule (`/app/schedule`).
+- [x] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
 
 ---
 
 ### Task 11: Storage Vault Monthly Billing Automation (`/app/storage/billing`)
-- [ ] Add recurring monthly billing generator for long-term vault storage units in `/app/storage`.
-- [ ] Automate recurring Stripe charge invocations or invoice emails for active vault rentals.
-- [ ] Display overdue storage account badges on the main Storage Vault page.
-- [ ] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
+- [x] Add recurring monthly billing generator for long-term vault storage units in `/app/storage`.
+- [x] Automate recurring Stripe charge invocations or invoice emails for active vault rentals.
+- [x] Display overdue storage account badges on the main Storage Vault page.
+- [x] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
 
 ---
 
 ### Task 12: Digital Bill of Lading (BOL) Legal Signature Flow (`/app/jobs/:id/bol`)
-- [ ] Build compliant digital Bill of Lading generator rendering contract terms, itemized valuation, and final pricing.
-- [ ] Add touch/mouse canvas signature capture for origin pickup and destination delivery sign-offs.
-- [ ] Generate signed PDF output using `pdf-lib` and attach directly to job documents.
-- [ ] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
+- [x] Build compliant digital Bill of Lading generator rendering contract terms, itemized valuation, and final pricing.
+- [x] Add touch/mouse canvas signature capture for origin pickup and destination delivery sign-offs.
+- [x] Generate signed PDF output using `pdf-lib` and attach directly to job documents.
+- [x] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
 
 ---
 
 ### Task 13: Post-Move Review & Automated Feedback Loop
-- [ ] Create automated post-move review request dispatch system triggered upon job status reaching `completed`.
-- [ ] Send SMS/Email with 1-5 star rating portal; 5-star reviews prompt direct Google Business Review redirect, while lower ratings trigger internal escalation alerts.
-- [ ] Display review score metrics on `/app/dashboard`.
-- [ ] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
+- [x] Create automated post-move review request dispatch system triggered upon job status reaching `completed`.
+- [x] Send SMS/Email with 1-5 star rating portal; 5-star reviews prompt direct Google Business Review redirect, while lower ratings trigger internal escalation alerts.
+- [x] Display review score metrics on `/app/dashboard`.
+- [x] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
 
 ---
 
 ### Task 14: Multi-Branch & Franchise Workspace Support (`/app/branches`)
-- [ ] Add multi-branch context selector in top nav allowing users to toggle between different office locations.
-- [ ] Scope jobs, schedules, trucks, and financial records by branch ID.
-- [ ] Create aggregated multi-branch performance dashboard for enterprise admins.
-- [ ] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
+- [x] Add multi-branch context selector in top nav allowing users to toggle between different office locations.
+- [x] Scope jobs, schedules, trucks, and financial records by branch ID.
+- [x] Create aggregated multi-branch performance dashboard for enterprise admins.
+- [x] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
 
 ---
 
 ### Task 15: Automated Marketing & Re-Engagement Engine (`/app/marketing`)
-- [ ] Create automated customer re-engagement campaign tool at `/app/marketing`.
-- [ ] Trigger automated follow-ups for expired quotes, unconfirmed estimates, and annual move anniversary check-ins.
-- [ ] Track email/SMS open rates, link clicks, and converted bookings.
-- [ ] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.
+- [x] Create automated customer re-engagement campaign tool at `/app/marketing`.
+- [x] Trigger automated follow-ups for expired quotes, unconfirmed estimates, and annual move anniversary check-ins.
+- [x] Track email/SMS open rates, link clicks, and converted bookings.
+- [x] Ensure `npx tsc --noEmit`, `bun run test`, and `bun run build` pass before marking complete.

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { surgeSettingsSchema } from './surge';
 export const canEditTariffs = (role: string | null) => role === 'admin';
 export const pricingSchema = z.object({
   rates: z.array(z.number().finite().min(0).max(100000)).min(1).max(20),
@@ -20,4 +21,5 @@ export const pricingSchema = z.object({
     heavyDefaultFee: z.number().finite().min(0).max(100000).optional(),
   }).strip().optional(),
   materials: z.array(z.object({ name: z.string().trim().min(1).max(120), price: z.number().finite().min(0).max(100000) }).strip()).max(200),
+  surge: surgeSettingsSchema.optional(),
 }).strip();

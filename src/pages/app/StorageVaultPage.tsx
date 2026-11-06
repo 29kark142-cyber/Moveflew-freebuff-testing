@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, Camera, Loader2, Plus, ScanLine, Trash2, Warehouse, X } from "lucide-react";
+import { CalendarClock, Camera, Loader2, Plus, ReceiptText, ScanLine, Trash2, Warehouse, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CameraScanner from "@/components/workspace/CameraScanner";
 import { crmFetch } from "@/lib/crm";
 import { shrinkImage } from "@/lib/photo";
 import { money } from "@shared/crm";
+import { overdueByVault, type StorageInvoice } from "@shared/storage-billing";
 import {
   VAULT_PHOTO_LIMIT,
   VAULT_PHOTO_MAX_CHARS,
@@ -57,6 +58,7 @@ const emptyDraft = (vaults: StorageVault[]) => ({
 /** Visual warehouse map: vault grid, itemised storage log and recurring billing. */
 export default function StorageVaultPage({ role }: { role: string }) {
   const [vaults, setVaults] = useState<StorageVault[] | null>(null);
+  const [invoices, setInvoices] = useState<StorageInvoice[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -77,8 +79,12 @@ export default function StorageVaultPage({ role }: { role: string }) {
 
   const load = useCallback(async () => {
     try {
-      const list = await crmFetch<StorageVault[]>("/vaults");
+      const [list, billing] = await Promise.all([
+        crmFetch<StorageVault[]>("/vaults"),
+        crmFetch<{ invoices: StorageInvoice[] }>("/ops/storage-billing").catch(() => null),
+      ]);
       setVaults(list);
+      setInvoices(billing?.invoices ?? []);
       setError("");
       setDraft((current) => (current.code ? current : emptyDraft(list)));
     } catch (reason) {
@@ -93,6 +99,7 @@ export default function StorageVaultPage({ role }: { role: string }) {
   const summary = useMemo(() => storageSummary(vaults ?? []), [vaults]);
   const billing = useMemo(() => recurringByCustomer(vaults ?? []), [vaults]);
   const selected = (vaults ?? []).find((vault) => vault.id === selectedId) ?? null;
+  const overdue = useMemo(() => overdueByVault(invoices), [invoices]);
 
   useEffect(() => {
     setEdit(
@@ -295,6 +302,9 @@ export default function StorageVaultPage({ role }: { role: string }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button className="ws-btn" onClick={() => { window.location.assign("/app/storage/billing"); }}>
+            <ReceiptText size={15} /> Billing
+          </Button>
           <Button
             className="ws-btn"
             onClick={() => {
@@ -462,6 +472,7 @@ export default function StorageVaultPage({ role }: { role: string }) {
           {vaults.map((vault) => {
             const usage = vaultUsage(vault);
             const release = dueForRelease(vault);
+            const late = overdue.get(vault.id);
             return (
               <article key={vault.id} className="ws-card ws-card-pad space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -485,6 +496,11 @@ export default function StorageVaultPage({ role }: { role: string }) {
                 <p className="text-sm font-medium">
                   {money(monthlyStorageCents(vault) / 100)} / month
                 </p>
+                {late && (
+                  <p className="ws-chip red">
+                    Overdue · {money(late.amountCents / 100)} ({late.count})
+                  </p>
+                )}
                 {release && <p className="ws-chip orange">Move-out date reached</p>}
                 <Button className="ws-btn w-full" onClick={() => setSelectedId(vault.id)}>
                   Open vault

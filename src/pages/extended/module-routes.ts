@@ -36,6 +36,7 @@ export const expandedPages: Record<string, ComponentType<ModuleProps>> = {
   "/app/payroll": operations("PayrollPage"),
   "/app/expenses": operations("ExpensesPage"),
   "/app/finance": lazy(() => import("./FinancePage")),
+  "/app/branches": lazy(() => import("./BranchesPage")),
   "/app/operations": operations("OperationsPage"),
   "/app/documents": DocumentPage,
   "/app/pipeline": engagement("PipelinePage"),

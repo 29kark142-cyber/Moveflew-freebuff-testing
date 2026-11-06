@@ -89,24 +89,32 @@ export default function ReviewFeedback({
         <span className="eg-public-kicker">
           {t("Private service feedback")}
         </span>
-        {complete || review.status === "submitted" ? (
+        {complete || ["submitted", "open", "resolved"].includes(review.status ?? "") ? (
           <div className="eg-public-success">
             <CheckCircle2 size={30} />
             <h1>{t("Thank you for your feedback")}</h1>
             <p>
-              {t(
-                "Your rating and comments were saved for private service review. They are not automatically published to a social or review network."
-              )}
+              {review.message ||
+                t(
+                  "Your rating and comments were saved for private service review."
+                )}
             </p>
-            {review.publicReviewUrl && (
+            {review.redirectUrl && (
               <a
                 className="eg-public-submit eg-inline-link"
-                href={review.publicReviewUrl}
+                href={review.redirectUrl}
                 target="_blank"
                 rel="noreferrer"
               >
-                {t("Open the public review link")}
+                {t("Continue to Google Business reviews")}
               </a>
+            )}
+            {review.escalated && (
+              <p>
+                {t(
+                  "Your feedback stays private. A manager has been alerted and will follow up directly."
+                )}
+              </p>
             )}
           </div>
         ) : (
@@ -114,7 +122,7 @@ export default function ReviewFeedback({
             <h1>{t("How was your experience?")}</h1>
             <p>
               {t(
-                "Please share an honest rating and feedback. All ratings are treated equally and this form is private service feedback, not a public post."
+                "Please share an honest rating and feedback. Every rating is saved privately. Five-star ratings may optionally continue to Google; lower ratings alert a manager instead."
               )}
             </p>
             <form className="eg-public-form" onSubmit={submit}>
@@ -156,20 +164,6 @@ export default function ReviewFeedback({
                 {t(saving ? "Saving feedback…" : "Submit private feedback")}
               </button>
             </form>
-            {review.publicReviewUrl && (
-              <p className="eg-muted">
-                {t(
-                  "A public review link is available independently of the rating selected above."
-                )}{" "}
-                <a
-                  href={review.publicReviewUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {t("Open the public review link")}
-                </a>
-              </p>
-            )}
           </>
         )}
       </section>

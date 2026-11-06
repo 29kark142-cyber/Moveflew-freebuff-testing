@@ -1,4 +1,7 @@
 import type { ReplacementCandidate } from "@shared/crew-replacement";
+import type { Branch, BranchPerformance } from "@shared/branches";
+import type { ReviewMetrics } from "@shared/reviews";
+import type { VehicleInspection } from "@shared/fleet";
 import type { ReminderSettings } from "@shared/reminders";
 import type {
   CrewMember,
@@ -16,6 +19,7 @@ import type { WorkspaceAppearance } from "@/lib/workspace-appearance";
 
 const API_ROOT = "/api/crm";
 const WORKSPACE_KEY = "nwcrewcrm.workspace-id";
+const BRANCH_KEY = "nwcrewcrm.branch-id";
 
 export type Workspace = {
   id: number; name: string; role: WorkspaceRole;
@@ -36,6 +40,7 @@ export type DashboardData = {
   trucks: Truck[];
   crew: CrewMember[];
   payments: Array<Record<string, unknown>>;
+  reviews?: ReviewMetrics;
 };
 export type Member = {
   id: number;
@@ -75,6 +80,28 @@ export function getWorkspaceId() {
   }
 }
 
+export function getBranchId(): number | null {
+  try {
+    const workspace = getWorkspaceId();
+    if (!workspace) return null;
+    const raw = localStorage.getItem(`${BRANCH_KEY}.${workspace}`);
+    return raw && /^[1-9]\d*$/.test(raw) ? Number(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setBranchId(id: number | string | null) {
+  try {
+    const workspace = getWorkspaceId();
+    if (!workspace) return;
+    if (id === null) localStorage.removeItem(`${BRANCH_KEY}.${workspace}`);
+    else localStorage.setItem(`${BRANCH_KEY}.${workspace}`, String(id));
+  } catch {
+    /* storage blocked */
+  }
+}
+
 export function setWorkspaceId(id: number | string | null) {
   try {
     if (id === null) localStorage.removeItem(WORKSPACE_KEY);
@@ -103,6 +130,8 @@ export async function crmFetch<T>(
   if (!publicRequest) {
     const selected = getWorkspaceId();
     if (selected) headers.set("x-workspace-id", selected);
+    const branch = getBranchId();
+    if (branch) headers.set("x-branch-id", String(branch));
   }
   for (const [key, value] of Object.entries(await sessionAuthorization()))
     headers.set(key, value);
@@ -150,6 +179,12 @@ export const crm = {
   createWorkspace: (name: string) =>
     crmFetch<Workspace>("/workspaces", json("POST", { name })),
   dashboard: () => crmFetch<DashboardData>("/dashboard"),
+  branches: () => crmFetch<Branch[]>("/branches"),
+  createBranch: (value: Omit<Branch, "id">) =>
+    crmFetch<Branch>("/branches", json("POST", value)),
+  updateBranch: (id: number, value: Partial<Omit<Branch, "id">>) =>
+    crmFetch<Branch>(`/branches/${id}`, json("PATCH", value)),
+  branchPerformance: () => crmFetch<BranchPerformance>("/branch-performance"),
   customers: () => crmFetch<Customer[]>("/customers"),
   createCustomer: (value: Partial<Customer>) =>
     crmFetch<Customer>("/customers", json("POST", value)),
@@ -248,6 +283,7 @@ export const crm = {
     crmFetch<Truck>("/trucks", json("POST", value)),
   updateTruck: (id: number, value: Partial<Truck>) =>
     crmFetch<Truck>(`/trucks/${id}`, json("PATCH", value)),
+  inspections: () => crmFetch<VehicleInspection[]>("/inspections"),
   crew: () => crmFetch<CrewMember[]>("/crew"),
   createCrew: (value: Omit<CrewMember, "id">) =>
     crmFetch<CrewMember>("/crew", json("POST", value)),

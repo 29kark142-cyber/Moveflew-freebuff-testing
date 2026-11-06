@@ -16,6 +16,7 @@ import { cacheField,readField,queuedField,enqueueField,syncField,queueSummary,qu
 import JobInvoicePdfButton from './JobInvoicePdfButton';
 import FieldDocuments from './FieldDocuments';
 import MoveChecklist from "./MoveChecklist";
+import PreTripInspection from "./PreTripInspection";
 import { DemoJobButton, ClearDemoButton, isDemoJob } from './BetaTools';
 import type { FieldDocument,FieldDocuments as Documents } from '@/shared/field-documents';
 import { useLocation } from "@/lib/wouter";
@@ -184,6 +185,7 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
             <button onClick={() => void load()} aria-label="Refresh" className="rounded-full border border-border p-3 text-foreground active:scale-95"><RefreshCw className="h-5 w-5" /></button>
           </header>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 w-full rounded-xl border border-input bg-background px-4 text-base text-foreground" />
+          <PreTripInspection />
           {['admin','office_admin'].includes(role) && <form className="space-y-2 border-b border-border pb-4" onSubmit={e=>{e.preventDefault();setOfficeSaving(true);void post('/field/settings',{officeEmail,googleReviewUrl:reviewUrl}).then(()=>toast.success('Company settings saved')).catch(e=>toast.error(e.message)).finally(()=>setOfficeSaving(false));}}><label className="block text-sm font-medium text-foreground" htmlFor="field-office-email">Company office email</label><div className="flex flex-wrap gap-2"><input id="field-office-email" type="email" value={officeEmail} onChange={e=>setOfficeEmail(e.target.value)} className="h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-foreground"/><input id="field-review-url" type="url" value={reviewUrl} onChange={e=>setReviewUrl(e.target.value)} placeholder="https://g.page/r/…/review" aria-label="Google review link" className="h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-foreground"/><Button disabled={officeSaving} type="submit" variant="outline">Save company settings</Button></div></form>}
           {jobs === null ? <p className="text-muted-foreground">Loading…</p> : jobs.length === 0 ? (
             <div className="space-y-3 rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground"><p>No jobs assigned for this day.</p><DemoJobButton role={role} onLoaded={() => { if (date === today()) void load(); else setDate(today()); }} /></div>

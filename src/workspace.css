@@ -211,6 +211,25 @@
   color: #bdc7d3;
   margin-right: 10px;
 }
+.ws-branch-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 12px;
+  color: #718094;
+  font-size: 12px;
+}
+.ws-branch-picker select {
+  min-height: 32px;
+  max-width: 190px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--navy);
+  padding: 0 8px;
+  font: inherit;
+}
 .ws-topbar__user {
   display: flex;
   gap: 7px;
@@ -1126,8 +1145,15 @@
     padding: 0 17px;
   }
   .ws-topbar__crumb span,
-  .ws-topbar__user span {
+  .ws-topbar__user span,
+  .ws-branch-picker__label {
     display: none;
+  }
+  .ws-branch-picker {
+    margin-right: 7px;
+  }
+  .ws-branch-picker select {
+    max-width: 128px;
   }
   .ws-content {
     padding: 18px;

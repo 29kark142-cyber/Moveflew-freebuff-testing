@@ -1,6 +1,8 @@
 import OnboardingWizard from "@/components/workspace/OnboardingWizard";
 import WorkspaceModules, { isNativeModule } from '@/components/workspace/modules/WorkspaceModules';
 import StorageVaultPage from '@/pages/app/StorageVaultPage';
+import StorageBillingPage from '@/pages/app/StorageBillingPage';
+import SurgePricingPage from '@/pages/app/SurgePricingPage';
 import SchedulePage from '@/pages/app/SchedulePage';
 import OperationalReports from '@/components/workspace/OperationalReports';
 import WorkspaceTariffs from '@/components/workspace/WorkspaceTariffs';
@@ -221,6 +223,7 @@ export default function WorkspaceApp() {
   else if (location === "/app/dispatch") page = <DispatchPage {...pageProps} />;
   else if (location === '/app/reports') page = <OperationalReports workspaceName={ws.name} />;
   else if (location === '/app/tariffs') page = <WorkspaceTariffs workspaceName={ws.name} role={ws.role} readOnly={isReadOnly(ws.subscriptionStatus)} />;
+  else if (location === '/app/storage/billing') page = <StorageBillingPage role={ws.role} />;
   else if (location === '/app/storage') page = <StorageVaultPage role={ws.role} />;
   else if (isNativeModule(location)) page = <WorkspaceModules path={location} workspaceName={ws.name} navigate={navigate} />;
   else if (ExpandedPage) page = <ExpandedPage {...pageProps} />;
@@ -255,6 +258,8 @@ export default function WorkspaceApp() {
         <MobileField role={bootstrap.workspace.role} userId={user.id} workspaceId={ws.id} />
       );
   else if (location === "/app/invoices") page = <InvoicesPage {...pageProps} />;
+  else if (location === "/app/settings/pricing")
+    page = <SurgePricingPage role={ws.role} navigate={navigate} />;
   else if (location === "/app/settings") page = <SettingsPage {...pageProps} workspaceId={ws.id} appearanceWritable={!isReadOnly(ws.subscriptionStatus)} />;
   else if (location === "/app/settings/integrations")
     page = <SettingsPage key="integrations" {...pageProps} integrationsTab workspaceId={ws.id} appearanceWritable={!isReadOnly(ws.subscriptionStatus)} />;

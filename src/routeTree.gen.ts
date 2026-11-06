@@ -35,14 +35,18 @@ import { Route as MoveJobIdRouteImport } from './routes/move.$jobId'
 import { Route as PortalTokenRouteImport } from './routes/portal.$token'
 import { Route as ProposalTokenRouteImport } from './routes/proposal.$token'
 import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
+import { Route as ReviewTokenRouteImport } from './routes/review.$token'
 import { Route as ShiftTokenRouteImport } from './routes/shift.$token'
 import { Route as ApiCrmSplatRouteImport } from './routes/api/crm/$'
 import { Route as ApiCronNotificationsRouteImport } from './routes/api/cron/notifications'
 import { Route as ApiCronRemindersRouteImport } from './routes/api.cron.reminders'
+import { Route as ApiCronStorageBillingRouteImport } from './routes/api.cron.storage-billing'
 import { Route as ApiFieldSplatRouteImport } from './routes/api/field/$'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
+import { Route as AppStorageBillingRouteImport } from './routes/app.storage.billing'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicPortalTokenRouteImport } from './routes/api/public/portal/$token'
+import { Route as ApiPublicReviewsTokenRouteImport } from './routes/api/public/reviews/$token'
 import { Route as ApiPublicV1LeadsRouteImport } from './routes/api/public/v1/leads'
 import { Route as ApiPublicV1QuotesRouteImport } from './routes/api/public/v1/quotes'
 import { Route as ApiQuoteTokenAcceptRouteImport } from './routes/api.quote.$token.accept'
@@ -50,6 +54,8 @@ import { Route as ApiQuoteTokenDepositIntentRouteImport } from './routes/api.quo
 import { Route as ApiQuoteTokenPackingRouteImport } from './routes/api.quote.$token.packing'
 import { Route as ApiShiftTokenRespondRouteImport } from './routes/api.shift.$token.respond'
 import { Route as ApiV1PublicQuotesRouteImport } from './routes/api/v1/public/quotes'
+import { Route as ApiPublicMarketingClickTokenRouteImport } from './routes/api/public/marketing/click/$token'
+import { Route as ApiPublicMarketingOpenTokenRouteImport } from './routes/api/public/marketing/open/$token'
 import { Route as ApiPublicPortalTokenClaimsRouteImport } from './routes/api/public/portal/$token/claims'
 import { Route as ApiPublicPortalTokenPhotosRouteImport } from './routes/api/public/portal/$token/photos'
 import { Route as ApiPublicPortalTokenRequestsRouteImport } from './routes/api/public/portal/$token/requests'
@@ -189,6 +195,11 @@ const QuoteTokenRoute = QuoteTokenRouteImport.update({
   path: '/quote/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReviewTokenRoute = ReviewTokenRouteImport.update({
+  id: '/review/$token',
+  path: '/review/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShiftTokenRoute = ShiftTokenRouteImport.update({
   id: '/shift/$token',
   path: '/shift/$token',
@@ -209,6 +220,11 @@ const ApiCronRemindersRoute = ApiCronRemindersRouteImport.update({
   path: '/api/cron/reminders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronStorageBillingRoute = ApiCronStorageBillingRouteImport.update({
+  id: '/api/cron/storage-billing',
+  path: '/api/cron/storage-billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFieldSplatRoute = ApiFieldSplatRouteImport.update({
   id: '/api/field/$',
   path: '/api/field/$',
@@ -219,6 +235,11 @@ const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   path: '/api/webhooks/stripe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppStorageBillingRoute = AppStorageBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppStorageRoute,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -228,6 +249,11 @@ const ApiPublicPaymentsWebhookRoute =
 const ApiPublicPortalTokenRoute = ApiPublicPortalTokenRouteImport.update({
   id: '/api/public/portal/$token',
   path: '/api/public/portal/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicReviewsTokenRoute = ApiPublicReviewsTokenRouteImport.update({
+  id: '/api/public/reviews/$token',
+  path: '/api/public/reviews/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicV1LeadsRoute = ApiPublicV1LeadsRouteImport.update({
@@ -266,6 +292,18 @@ const ApiV1PublicQuotesRoute = ApiV1PublicQuotesRouteImport.update({
   path: '/api/v1/public/quotes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMarketingClickTokenRoute =
+  ApiPublicMarketingClickTokenRouteImport.update({
+    id: '/api/public/marketing/click/$token',
+    path: '/api/public/marketing/click/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicMarketingOpenTokenRoute =
+  ApiPublicMarketingOpenTokenRouteImport.update({
+    id: '/api/public/marketing/open/$token',
+    path: '/api/public/marketing/open/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPortalTokenClaimsRoute =
   ApiPublicPortalTokenClaimsRouteImport.update({
     id: '/claims',
@@ -326,7 +364,7 @@ export interface FileRoutesByFullPath {
   '/admin/platform': typeof AdminPlatformRoute
   '/api/copilot': typeof ApiCopilotRoute
   '/app/$': typeof AppSplatRoute
-  '/app/storage': typeof AppStorageRoute
+  '/app/storage': typeof AppStorageRouteWithChildren
   '/demo/proposal': typeof DemoProposalRoute
   '/embed/lead': typeof EmbedLeadRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -334,14 +372,18 @@ export interface FileRoutesByFullPath {
   '/portal/$token': typeof PortalTokenRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/shift/$token': typeof ShiftTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/cron/reminders': typeof ApiCronRemindersRoute
+  '/api/cron/storage-billing': typeof ApiCronStorageBillingRoute
   '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/app/storage/billing': typeof AppStorageBillingRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/portal/$token': typeof ApiPublicPortalTokenRouteWithChildren
+  '/api/public/reviews/$token': typeof ApiPublicReviewsTokenRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
@@ -349,6 +391,8 @@ export interface FileRoutesByFullPath {
   '/api/quote/$token/packing': typeof ApiQuoteTokenPackingRoute
   '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
+  '/api/public/marketing/click/$token': typeof ApiPublicMarketingClickTokenRoute
+  '/api/public/marketing/open/$token': typeof ApiPublicMarketingOpenTokenRoute
   '/api/public/portal/$token/claims': typeof ApiPublicPortalTokenClaimsRoute
   '/api/public/portal/$token/photos': typeof ApiPublicPortalTokenPhotosRouteWithChildren
   '/api/public/portal/$token/requests': typeof ApiPublicPortalTokenRequestsRoute
@@ -376,7 +420,7 @@ export interface FileRoutesByTo {
   '/admin/platform': typeof AdminPlatformRoute
   '/api/copilot': typeof ApiCopilotRoute
   '/app/$': typeof AppSplatRoute
-  '/app/storage': typeof AppStorageRoute
+  '/app/storage': typeof AppStorageRouteWithChildren
   '/demo/proposal': typeof DemoProposalRoute
   '/embed/lead': typeof EmbedLeadRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -384,14 +428,18 @@ export interface FileRoutesByTo {
   '/portal/$token': typeof PortalTokenRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/shift/$token': typeof ShiftTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/cron/reminders': typeof ApiCronRemindersRoute
+  '/api/cron/storage-billing': typeof ApiCronStorageBillingRoute
   '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/app/storage/billing': typeof AppStorageBillingRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/portal/$token': typeof ApiPublicPortalTokenRouteWithChildren
+  '/api/public/reviews/$token': typeof ApiPublicReviewsTokenRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
@@ -399,6 +447,8 @@ export interface FileRoutesByTo {
   '/api/quote/$token/packing': typeof ApiQuoteTokenPackingRoute
   '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
+  '/api/public/marketing/click/$token': typeof ApiPublicMarketingClickTokenRoute
+  '/api/public/marketing/open/$token': typeof ApiPublicMarketingOpenTokenRoute
   '/api/public/portal/$token/claims': typeof ApiPublicPortalTokenClaimsRoute
   '/api/public/portal/$token/photos': typeof ApiPublicPortalTokenPhotosRouteWithChildren
   '/api/public/portal/$token/requests': typeof ApiPublicPortalTokenRequestsRoute
@@ -427,7 +477,7 @@ export interface FileRoutesById {
   '/admin/platform': typeof AdminPlatformRoute
   '/api/copilot': typeof ApiCopilotRoute
   '/app/$': typeof AppSplatRoute
-  '/app/storage': typeof AppStorageRoute
+  '/app/storage': typeof AppStorageRouteWithChildren
   '/demo/proposal': typeof DemoProposalRoute
   '/embed/lead': typeof EmbedLeadRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -435,14 +485,18 @@ export interface FileRoutesById {
   '/portal/$token': typeof PortalTokenRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
+  '/review/$token': typeof ReviewTokenRoute
   '/shift/$token': typeof ShiftTokenRoute
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/cron/reminders': typeof ApiCronRemindersRoute
+  '/api/cron/storage-billing': typeof ApiCronStorageBillingRoute
   '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
+  '/app/storage/billing': typeof AppStorageBillingRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/portal/$token': typeof ApiPublicPortalTokenRouteWithChildren
+  '/api/public/reviews/$token': typeof ApiPublicReviewsTokenRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
@@ -450,6 +504,8 @@ export interface FileRoutesById {
   '/api/quote/$token/packing': typeof ApiQuoteTokenPackingRoute
   '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
+  '/api/public/marketing/click/$token': typeof ApiPublicMarketingClickTokenRoute
+  '/api/public/marketing/open/$token': typeof ApiPublicMarketingOpenTokenRoute
   '/api/public/portal/$token/claims': typeof ApiPublicPortalTokenClaimsRoute
   '/api/public/portal/$token/photos': typeof ApiPublicPortalTokenPhotosRouteWithChildren
   '/api/public/portal/$token/requests': typeof ApiPublicPortalTokenRequestsRoute
@@ -487,14 +543,18 @@ export interface FileRouteTypes {
     | '/portal/$token'
     | '/proposal/$token'
     | '/quote/$token'
+    | '/review/$token'
     | '/shift/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/cron/reminders'
+    | '/api/cron/storage-billing'
     | '/api/field/$'
     | '/api/webhooks/stripe'
+    | '/app/storage/billing'
     | '/api/public/payments/webhook'
     | '/api/public/portal/$token'
+    | '/api/public/reviews/$token'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
@@ -502,6 +562,8 @@ export interface FileRouteTypes {
     | '/api/quote/$token/packing'
     | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
+    | '/api/public/marketing/click/$token'
+    | '/api/public/marketing/open/$token'
     | '/api/public/portal/$token/claims'
     | '/api/public/portal/$token/photos'
     | '/api/public/portal/$token/requests'
@@ -537,14 +599,18 @@ export interface FileRouteTypes {
     | '/portal/$token'
     | '/proposal/$token'
     | '/quote/$token'
+    | '/review/$token'
     | '/shift/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/cron/reminders'
+    | '/api/cron/storage-billing'
     | '/api/field/$'
     | '/api/webhooks/stripe'
+    | '/app/storage/billing'
     | '/api/public/payments/webhook'
     | '/api/public/portal/$token'
+    | '/api/public/reviews/$token'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
@@ -552,6 +618,8 @@ export interface FileRouteTypes {
     | '/api/quote/$token/packing'
     | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
+    | '/api/public/marketing/click/$token'
+    | '/api/public/marketing/open/$token'
     | '/api/public/portal/$token/claims'
     | '/api/public/portal/$token/photos'
     | '/api/public/portal/$token/requests'
@@ -587,14 +655,18 @@ export interface FileRouteTypes {
     | '/portal/$token'
     | '/proposal/$token'
     | '/quote/$token'
+    | '/review/$token'
     | '/shift/$token'
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/cron/reminders'
+    | '/api/cron/storage-billing'
     | '/api/field/$'
     | '/api/webhooks/stripe'
+    | '/app/storage/billing'
     | '/api/public/payments/webhook'
     | '/api/public/portal/$token'
+    | '/api/public/reviews/$token'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
@@ -602,6 +674,8 @@ export interface FileRouteTypes {
     | '/api/quote/$token/packing'
     | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
+    | '/api/public/marketing/click/$token'
+    | '/api/public/marketing/open/$token'
     | '/api/public/portal/$token/claims'
     | '/api/public/portal/$token/photos'
     | '/api/public/portal/$token/requests'
@@ -630,7 +704,7 @@ export interface RootRouteChildren {
   AdminPlatformRoute: typeof AdminPlatformRoute
   ApiCopilotRoute: typeof ApiCopilotRoute
   AppSplatRoute: typeof AppSplatRoute
-  AppStorageRoute: typeof AppStorageRoute
+  AppStorageRoute: typeof AppStorageRouteWithChildren
   DemoProposalRoute: typeof DemoProposalRoute
   EmbedLeadRoute: typeof EmbedLeadRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -638,14 +712,17 @@ export interface RootRouteChildren {
   PortalTokenRoute: typeof PortalTokenRoute
   ProposalTokenRoute: typeof ProposalTokenRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
+  ReviewTokenRoute: typeof ReviewTokenRoute
   ShiftTokenRoute: typeof ShiftTokenRoute
   ApiCrmSplatRoute: typeof ApiCrmSplatRoute
   ApiCronNotificationsRoute: typeof ApiCronNotificationsRoute
   ApiCronRemindersRoute: typeof ApiCronRemindersRoute
+  ApiCronStorageBillingRoute: typeof ApiCronStorageBillingRoute
   ApiFieldSplatRoute: typeof ApiFieldSplatRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicPortalTokenRoute: typeof ApiPublicPortalTokenRouteWithChildren
+  ApiPublicReviewsTokenRoute: typeof ApiPublicReviewsTokenRoute
   ApiPublicV1LeadsRoute: typeof ApiPublicV1LeadsRoute
   ApiPublicV1QuotesRoute: typeof ApiPublicV1QuotesRoute
   ApiQuoteTokenAcceptRoute: typeof ApiQuoteTokenAcceptRoute
@@ -653,6 +730,8 @@ export interface RootRouteChildren {
   ApiQuoteTokenPackingRoute: typeof ApiQuoteTokenPackingRoute
   ApiShiftTokenRespondRoute: typeof ApiShiftTokenRespondRoute
   ApiV1PublicQuotesRoute: typeof ApiV1PublicQuotesRoute
+  ApiPublicMarketingClickTokenRoute: typeof ApiPublicMarketingClickTokenRoute
+  ApiPublicMarketingOpenTokenRoute: typeof ApiPublicMarketingOpenTokenRoute
   ApiPublicV1HooksTokenRoute: typeof ApiPublicV1HooksTokenRoute
   ApiPublicV1TrackTokenRoute: typeof ApiPublicV1TrackTokenRoute
 }
@@ -841,6 +920,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuoteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/review/$token': {
+      id: '/review/$token'
+      path: '/review/$token'
+      fullPath: '/review/$token'
+      preLoaderRoute: typeof ReviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shift/$token': {
       id: '/shift/$token'
       path: '/shift/$token'
@@ -869,6 +955,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/storage-billing': {
+      id: '/api/cron/storage-billing'
+      path: '/api/cron/storage-billing'
+      fullPath: '/api/cron/storage-billing'
+      preLoaderRoute: typeof ApiCronStorageBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/field/$': {
       id: '/api/field/$'
       path: '/api/field/$'
@@ -883,6 +976,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksStripeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/storage/billing': {
+      id: '/app/storage/billing'
+      path: '/billing'
+      fullPath: '/app/storage/billing'
+      preLoaderRoute: typeof AppStorageBillingRouteImport
+      parentRoute: typeof AppStorageRoute
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -895,6 +995,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/portal/$token'
       fullPath: '/api/public/portal/$token'
       preLoaderRoute: typeof ApiPublicPortalTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/reviews/$token': {
+      id: '/api/public/reviews/$token'
+      path: '/api/public/reviews/$token'
+      fullPath: '/api/public/reviews/$token'
+      preLoaderRoute: typeof ApiPublicReviewsTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/v1/leads': {
@@ -944,6 +1051,20 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/public/quotes'
       fullPath: '/api/v1/public/quotes'
       preLoaderRoute: typeof ApiV1PublicQuotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/marketing/click/$token': {
+      id: '/api/public/marketing/click/$token'
+      path: '/api/public/marketing/click/$token'
+      fullPath: '/api/public/marketing/click/$token'
+      preLoaderRoute: typeof ApiPublicMarketingClickTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/marketing/open/$token': {
+      id: '/api/public/marketing/open/$token'
+      path: '/api/public/marketing/open/$token'
+      fullPath: '/api/public/marketing/open/$token'
+      preLoaderRoute: typeof ApiPublicMarketingOpenTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/portal/$token/claims': {
@@ -998,6 +1119,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppStorageRouteChildren {
+  AppStorageBillingRoute: typeof AppStorageBillingRoute
+}
+
+const AppStorageRouteChildren: AppStorageRouteChildren = {
+  AppStorageBillingRoute: AppStorageBillingRoute,
+}
+
+const AppStorageRouteWithChildren = AppStorageRoute._addFileChildren(
+  AppStorageRouteChildren,
+)
+
 interface ApiPublicPortalTokenPhotosRouteChildren {
   ApiPublicPortalTokenPhotosPhotoIdRoute: typeof ApiPublicPortalTokenPhotosPhotoIdRoute
 }
@@ -1051,7 +1184,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminPlatformRoute: AdminPlatformRoute,
   ApiCopilotRoute: ApiCopilotRoute,
   AppSplatRoute: AppSplatRoute,
-  AppStorageRoute: AppStorageRoute,
+  AppStorageRoute: AppStorageRouteWithChildren,
   DemoProposalRoute: DemoProposalRoute,
   EmbedLeadRoute: EmbedLeadRoute,
   InviteTokenRoute: InviteTokenRoute,
@@ -1059,14 +1192,17 @@ const rootRouteChildren: RootRouteChildren = {
   PortalTokenRoute: PortalTokenRoute,
   ProposalTokenRoute: ProposalTokenRoute,
   QuoteTokenRoute: QuoteTokenRoute,
+  ReviewTokenRoute: ReviewTokenRoute,
   ShiftTokenRoute: ShiftTokenRoute,
   ApiCrmSplatRoute: ApiCrmSplatRoute,
   ApiCronNotificationsRoute: ApiCronNotificationsRoute,
   ApiCronRemindersRoute: ApiCronRemindersRoute,
+  ApiCronStorageBillingRoute: ApiCronStorageBillingRoute,
   ApiFieldSplatRoute: ApiFieldSplatRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicPortalTokenRoute: ApiPublicPortalTokenRouteWithChildren,
+  ApiPublicReviewsTokenRoute: ApiPublicReviewsTokenRoute,
   ApiPublicV1LeadsRoute: ApiPublicV1LeadsRoute,
   ApiPublicV1QuotesRoute: ApiPublicV1QuotesRoute,
   ApiQuoteTokenAcceptRoute: ApiQuoteTokenAcceptRoute,
@@ -1074,6 +1210,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiQuoteTokenPackingRoute: ApiQuoteTokenPackingRoute,
   ApiShiftTokenRespondRoute: ApiShiftTokenRespondRoute,
   ApiV1PublicQuotesRoute: ApiV1PublicQuotesRoute,
+  ApiPublicMarketingClickTokenRoute: ApiPublicMarketingClickTokenRoute,
+  ApiPublicMarketingOpenTokenRoute: ApiPublicMarketingOpenTokenRoute,
   ApiPublicV1HooksTokenRoute: ApiPublicV1HooksTokenRoute,
   ApiPublicV1TrackTokenRoute: ApiPublicV1TrackTokenRoute,
 }

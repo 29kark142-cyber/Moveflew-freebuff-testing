@@ -57,7 +57,7 @@ export function emailConfigured(): boolean {
   return Boolean(process.env["SENDGRID_API_KEY"] && process.env["MESSAGING_FROM_EMAIL"]);
 }
 
-async function sendSms(to: string, body: string): Promise<Delivery> {
+export async function sendSms(to: string, body: string): Promise<Delivery> {
   const sid = process.env["TWILIO_ACCOUNT_SID"];
   const token = process.env["TWILIO_AUTH_TOKEN"];
   const from = process.env["TWILIO_FROM_NUMBER"];

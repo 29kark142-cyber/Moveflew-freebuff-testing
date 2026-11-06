@@ -115,6 +115,11 @@ export type Campaign = Row & {
   endDate: string;
   spendCents: number;
   notes: string;
+  /** Optional automation targeting and display metadata. */
+  status?: string;
+  channel?: string;
+  audience?: string;
+  template?: string;
 };
 export type ReviewRequest = Row & {
   customerId: number;
@@ -123,6 +128,12 @@ export type ReviewRequest = Row & {
   status: string;
   rating: number | null;
   feedback: string;
+  channel?: string;
+  deliveryStatus?: string;
+  deliveryDetail?: string;
+  escalated?: boolean;
+  publicReviewUrl?: string | null;
+  sentAt?: string | null;
   createdAt: string;
 };
 export type AccessKey = Row & {

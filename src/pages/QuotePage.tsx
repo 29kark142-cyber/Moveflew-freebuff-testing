@@ -254,6 +254,12 @@ export default function QuotePage({ token }: { token?: string }) {
               <strong>{money(line.amount)}</strong>
             </div>
           ))}
+          {quote.surge && quote.surge.amount > 0 && (
+            <p className="ws-helper" style={{ marginTop: 10 }} role="note">
+              Seasonal pricing is included in the lines above: {quote.surge.percent}% based on
+              your move date. It is shown separately so you can see exactly what changed.
+            </p>
+          )}
         </section>
 
         <section

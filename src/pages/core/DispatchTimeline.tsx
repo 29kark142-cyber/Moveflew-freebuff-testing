@@ -475,8 +475,13 @@ export default function DispatchTimeline({ role }: ModuleProps) {
                       {tx("Backlog / no truck", "Очередь / без грузовика")}
                     </option>
                     {timeline.trucks.map(truck => (
-                      <option key={truck.id} value={truck.id}>
+                      <option
+                        key={truck.id}
+                        value={truck.id}
+                        disabled={truck.status === "maintenance"}
+                      >
                         {truck.name} ({truck.status})
+                        {truck.status === "maintenance" ? " — unavailable" : ""}
                       </option>
                     ))}
                   </select>

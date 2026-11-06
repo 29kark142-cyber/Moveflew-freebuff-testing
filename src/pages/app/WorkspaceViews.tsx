@@ -42,6 +42,7 @@ import {
   Search,
   Send,
   ShieldCheck,
+  Star,
   Truck,
   UsersRound,
   X,
@@ -81,9 +82,11 @@ import VaultPhotoGallery from "@/components/workspace/VaultPhotoGallery";
 import SettingsRemindersPage from "@/pages/app/SettingsRemindersPage";
 import QuoteDispatch from "@/components/workspace/QuoteDispatch";
 import { routeTravelPricing } from "@shared/route-pricing";
+import { maintenanceLog, serviceDue, type MaintenanceEntry } from "@shared/fleet";
 import type { AddressRoute } from "@/lib/places";
 import { crm, getWorkspaceId, type Member } from "@/lib/crm";
 import { getLocale, moverCount, useI18n } from "@/lib/i18n";
+import { Link } from "@/lib/wouter";
 import { engage } from "@/lib/engage-api";
 import { catalogChoices, inventoryText } from "@shared/inventory-catalog";
 import SignaturePad from "@/components/workspace/SignaturePad";
@@ -258,6 +261,21 @@ export function DashboardPage({ role, navigate }: PageProps) {
           number={money(outstanding)}
           hint={t("Based on invoice status")}
           icon={<CreditCard size={17} />}
+        />
+        <Stat
+          label={t("Review average")}
+          number={data.reviews?.average == null ? "—" : `${data.reviews.average}/5`}
+          hint={t("{responded} of {requested} feedback responses", {
+            responded: data.reviews?.responded ?? 0,
+            requested: data.reviews?.requested ?? 0,
+          })}
+          icon={<Star size={17} />}
+        />
+        <Stat
+          label={t("Review escalations")}
+          number={String(data.reviews?.openEscalations ?? 0)}
+          hint={t("Low ratings awaiting manager follow-up")}
+          icon={<ShieldCheck size={17} />}
         />
       </div>
       <OpsAlertCenter jobs={data.jobs} navigate={navigate} />
@@ -3086,11 +3104,12 @@ function JobCard({ job, style }: { job: Job; style?: React.CSSProperties }) {
 export function FleetPage({ role, navigate }: PageProps) {
   const { t } = useI18n();
   const { data, loading, error, refresh } = useRemote(
-    () => Promise.all([crm.trucks(), crm.crew(), crm.members()]),
+    () => Promise.all([crm.trucks(), crm.crew(), crm.members(), crm.inspections()]),
     []
   );
   const [tab, setTab] = useState<"fleet" | "crew">("fleet");
   const [truck, setTruck] = useState<TruckType | "new" | null>(null);
+  const [service, setService] = useState<TruckType | null>(null);
   const [person, setPerson] = useState<CrewMember | "new" | null>(null);
   if (loading) return <LoadingBlock label={t("Loading fleet and crew…")} />;
   if (error || !data)
@@ -3103,7 +3122,7 @@ export function FleetPage({ role, navigate }: PageProps) {
         <ErrorNotice error={error} retry={() => void refresh()} />
       </>
     );
-  const [trucks, crew, members] = data;
+  const [trucks, crew, members, inspections] = data;
   const memberByUserId = new Map(
     members.map(member => [member.userId, member])
   );
@@ -3147,42 +3166,71 @@ export function FleetPage({ role, navigate }: PageProps) {
                   <th>{t("Plate")}</th>
                   <th>{t("Capacity")}</th>
                   <th>{t("Dimensions")}</th>
+                  <th>{t("Mileage")}</th>
+                  <th>{t("Service")}</th>
+                  <th>{t("Last inspection")}</th>
                   <th>{t("Status")}</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {trucks.map(vehicle => (
-                  <tr key={vehicle.id}>
-                    <td className="ws-table-main">{vehicle.name}</td>
-                    <td>{vehicle.plate}</td>
-                    <td>
-                      {t("{count} cu ft", {
-                        count: vehicle.capacityCuft.toLocaleString(getLocale()),
-                      })}
-                      <small>
-                        {t("{count} lb limit", {
-                          count:
-                            vehicle.weightLimit.toLocaleString(getLocale()),
+                {trucks.map(vehicle => {
+                  const due = serviceDue(vehicle);
+                  const inspection = inspections
+                    .filter(item => item.truckId === vehicle.id)
+                    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+                  return (
+                    <tr key={vehicle.id}>
+                      <td className="ws-table-main">{vehicle.name}</td>
+                      <td>{vehicle.plate}</td>
+                      <td>
+                        {t("{count} cu ft", {
+                          count: vehicle.capacityCuft.toLocaleString(getLocale()),
                         })}
-                      </small>
-                    </td>
-                    <td>{vehicle.dimensions || "—"}</td>
-                    <td>
-                      <StatusChip status={vehicle.status} />
-                    </td>
-                    <td>
-                      {allowed && (
-                        <button
-                          className="ws-icon-btn"
-                          onClick={() => setTruck(vehicle)}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        <small>
+                          {t("{count} lb limit", {
+                            count:
+                              vehicle.weightLimit.toLocaleString(getLocale()),
+                          })}
+                        </small>
+                      </td>
+                      <td>{vehicle.dimensions || "—"}</td>
+                      <td>{(vehicle.mileage ?? 0).toLocaleString(getLocale())} mi</td>
+                      <td>
+                        <StatusChip status={due.due ? "maintenance" : "available"} />
+                        <small>{due.label}</small>
+                      </td>
+                      <td>
+                        {inspection
+                          ? `${inspection.date} · ${inspection.passed ? t("Passed") : t("Issues noted")}`
+                          : "—"}
+                        {inspection?.driverName && <small>{inspection.driverName}</small>}
+                      </td>
+                      <td>
+                        <StatusChip status={vehicle.status} />
+                      </td>
+                      <td>
+                        {allowed && (
+                          <>
+                            <button
+                              className="ws-icon-btn"
+                              title={t("Log service")}
+                              onClick={() => setService(vehicle)}
+                            >
+                              <span className="text-[10px] font-bold">SVC</span>
+                            </button>
+                            <button
+                              className="ws-icon-btn"
+                              onClick={() => setTruck(vehicle)}
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -3294,6 +3342,16 @@ export function FleetPage({ role, navigate }: PageProps) {
           }}
         />
       )}{" "}
+      {service && (
+        <ServiceModal
+          truck={service}
+          onClose={() => setService(null)}
+          onSaved={async () => {
+            setService(null);
+            await refresh();
+          }}
+        />
+      )}{" "}
       {person && (
         <CrewModal
           initial={person}
@@ -3327,6 +3385,12 @@ function TruckModal({
           weightLimit: 0,
           dimensions: "",
           status: "active",
+          mileage: 0,
+          serviceIntervalMiles: 5000,
+          lastServiceMiles: 0,
+          lastServiceDate: "",
+          nextServiceDate: "",
+          maintenanceNotes: "",
         }
       : initial
   );
@@ -3407,10 +3471,64 @@ function TruckModal({
                 value={form.status}
                 onChange={e => set("status", eventValue(e))}
               >
+                <option value="available">{t("available")}</option>
                 <option value="active">{t("active")}</option>
                 <option value="maintenance">{t("maintenance")}</option>
                 <option value="inactive">{t("inactive")}</option>
               </select>
+            </Field>
+            <Field label={t("Current mileage")}>
+              <input
+                className="ws-input"
+                type="number"
+                min="0"
+                step="1"
+                value={form.mileage ?? 0}
+                onChange={e => set("mileage", Number(eventValue(e)) || 0)}
+              />
+            </Field>
+            <Field label={t("Service interval (miles)")}>
+              <input
+                className="ws-input"
+                type="number"
+                min="0"
+                step="100"
+                value={form.serviceIntervalMiles ?? 5000}
+                onChange={e => set("serviceIntervalMiles", Number(eventValue(e)) || 0)}
+              />
+            </Field>
+            <Field label={t("Last service odometer")}>
+              <input
+                className="ws-input"
+                type="number"
+                min="0"
+                step="1"
+                value={form.lastServiceMiles ?? 0}
+                onChange={e => set("lastServiceMiles", Number(eventValue(e)) || 0)}
+              />
+            </Field>
+            <Field label={t("Last service date")}>
+              <input
+                className="ws-input"
+                type="date"
+                value={form.lastServiceDate ?? ""}
+                onChange={e => set("lastServiceDate", eventValue(e))}
+              />
+            </Field>
+            <Field label={t("Next service date")}>
+              <input
+                className="ws-input"
+                type="date"
+                value={form.nextServiceDate ?? ""}
+                onChange={e => set("nextServiceDate", eventValue(e))}
+              />
+            </Field>
+            <Field label={t("Maintenance notes")}>
+              <input
+                className="ws-input"
+                value={form.maintenanceNotes ?? ""}
+                onChange={e => set("maintenanceNotes", eventValue(e))}
+              />
             </Field>
           </div>
           {error && <div className="ws-error">{t(error)}</div>}
@@ -3421,6 +3539,173 @@ function TruckModal({
           </button>
           <button className="ws-btn primary" disabled={saving}>
             {saving ? t("Saving…") : t("Save truck")}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+function ServiceModal({
+  truck,
+  onClose,
+  onSaved,
+}: {
+  truck: TruckType;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [form, setForm] = useState({
+    serviceDate: localToday(),
+    odometer: String(truck.mileage ?? 0),
+    service: "",
+    vendor: "",
+    cost: "",
+    notes: "",
+    nextServiceMiles: truck.serviceIntervalMiles
+      ? String((truck.lastServiceMiles ?? 0) + truck.serviceIntervalMiles)
+      : "",
+    returnToService: truck.status === "maintenance",
+  });
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const set = (key: keyof typeof form, value: string | boolean) =>
+    setForm(current => ({ ...current, [key]: value }));
+  return (
+    <Modal title={t("Log service · {truck}", { truck: truck.name })} onClose={onClose}>
+      <form
+        onSubmit={async event => {
+          event.preventDefault();
+          const odometer = Math.max(0, Number(form.odometer) || 0);
+          if (!form.service.trim()) {
+            setError(t("Describe the service performed."));
+            return;
+          }
+          setSaving(true);
+          setError("");
+          try {
+            const entry: MaintenanceEntry = {
+              id:
+                globalThis.crypto?.randomUUID?.() ??
+                `service-${Date.now()}`,
+              serviceDate: form.serviceDate,
+              odometer,
+              service: form.service.trim(),
+              vendor: form.vendor.trim(),
+              costCents: Math.max(0, Math.round((Number(form.cost) || 0) * 100)),
+              notes: form.notes.trim(),
+              nextServiceMiles: form.nextServiceMiles
+                ? Math.max(0, Number(form.nextServiceMiles) || 0)
+                : null,
+              createdAt: new Date().toISOString(),
+            };
+            await crm.updateTruck(truck.id, {
+              mileage: odometer,
+              lastServiceMiles: odometer,
+              lastServiceDate: form.serviceDate,
+              maintenanceLog: [entry, ...maintenanceLog(truck.maintenanceLog)].slice(0, 100),
+              status: form.returnToService ? "available" : truck.status,
+              maintenanceNotes: form.notes.trim() || truck.maintenanceNotes || "",
+            });
+            await onSaved();
+          } catch (reason) {
+            setError(
+              reason instanceof Error ? reason.message : "Could not save this service.",
+            );
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        <div className="ws-modal__body">
+          <p className="ws-helper">
+            {t("The odometer and last-service values update together with this entry.")}
+          </p>
+          <div className="ws-form-grid">
+            <Field label={t("Service date")}>
+              <input
+                required
+                className="ws-input"
+                type="date"
+                value={form.serviceDate}
+                onChange={e => set("serviceDate", eventValue(e))}
+              />
+            </Field>
+            <Field label={t("Odometer (miles)")}>
+              <input
+                required
+                className="ws-input"
+                type="number"
+                min="0"
+                step="1"
+                value={form.odometer}
+                onChange={e => set("odometer", eventValue(e))}
+              />
+            </Field>
+            <Field label={t("Service performed")}>
+              <input
+                required
+                className="ws-input"
+                maxLength={180}
+                placeholder={t("Oil change, brakes, tires…")}
+                value={form.service}
+                onChange={e => set("service", eventValue(e))}
+              />
+            </Field>
+            <Field label={t("Vendor")}>
+              <input
+                className="ws-input"
+                maxLength={120}
+                value={form.vendor}
+                onChange={e => set("vendor", eventValue(e))}
+              />
+            </Field>
+            <Field label={t("Cost ($)")}>
+              <input
+                className="ws-input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.cost}
+                onChange={e => set("cost", eventValue(e))}
+              />
+            </Field>
+            <Field label={t("Next service at (miles)")}>
+              <input
+                className="ws-input"
+                type="number"
+                min="0"
+                step="100"
+                value={form.nextServiceMiles}
+                onChange={e => set("nextServiceMiles", eventValue(e))}
+              />
+            </Field>
+          </div>
+          <Field label={t("Notes")}>
+            <textarea
+              className="ws-input"
+              rows={3}
+              maxLength={2000}
+              value={form.notes}
+              onChange={e => set("notes", eventValue(e))}
+            />
+          </Field>
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={form.returnToService}
+              onChange={e => set("returnToService", e.target.checked)}
+            />
+            {t("Return this truck to service")}
+          </label>
+          {error && <div className="ws-error">{t(error)}</div>}
+        </div>
+        <div className="ws-modal__foot">
+          <button type="button" className="ws-btn" onClick={onClose}>
+            {t("Cancel")}
+          </button>
+          <button className="ws-btn primary" disabled={saving}>
+            {saving ? t("Saving…") : t("Save service")}
           </button>
         </div>
       </form>
@@ -4585,6 +4870,11 @@ function PricingSettings() {
             )}
           </p>
         </div>
+      </div>
+      <div className="ws-actions" style={{ marginBottom: 14 }}>
+        <Link className="ws-btn" href="/app/settings/pricing">
+          {t("Peak-season & surge pricing")}
+        </Link>
       </div>
       <div className="ws-form-grid three">
         {value.rates.map((rate, index) => (
