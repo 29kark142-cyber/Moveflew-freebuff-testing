@@ -152,6 +152,20 @@ export function newCrewShift(input: {
   };
 }
 
+/**
+ * Drops the replaced member's token (and any stale token for the new member) and stores the
+ * fresh pending shift, so a swapped-out link can no longer answer for this job.
+ */
+export function withReplacementShift(
+  value: unknown,
+  input: { removeCrewIds: readonly number[]; shift: CrewShift },
+): CrewShift[] {
+  return [
+    ...crewShifts(value).filter((shift) => !input.removeCrewIds.includes(shift.crewId)),
+    input.shift,
+  ].slice(-CREW_SHIFT_LIMIT);
+}
+
 /** Replaces one crew answer without touching the other assignments. */
 export function withShiftResponse(
   value: unknown,

@@ -255,6 +255,31 @@ export async function fieldRoute(ctx: Ctx, method: string, parts: string[], body
     );
   }
 
+  // Crew lead milestone updates with device GPS, mirrored into the customer tracker.
+  if (sub === "checkin" && method === "POST") {
+    const self = await me(ctx, h);
+    const lead =
+      self &&
+      ["crew_lead", "driver"].includes(
+        String(self["crewRole"] ?? (self["isDriver"] ? "driver" : "")),
+      );
+    if (!office && !lead) h.fail(403, "Only the crew lead or driver can check in");
+    const { CheckinError, recordDriverCheckin } = await import("./tracking");
+    try {
+      const result = await recordDriverCheckin({
+        job,
+        payload: await body(),
+        crew: self ? { id: self.id, name: String(self["name"] ?? "") } : null,
+        by: String(self?.["name"] ?? ctx.email ?? "Crew"),
+        save: (patch) => h.saveData(ctx, id, patch),
+      });
+      return view(result.job);
+    } catch (error) {
+      if (error instanceof CheckinError) h.fail(error.status, error.message);
+      throw error;
+    }
+  }
+
   if (sub === "photos") {
     if (method === "GET") {
       const all = (await h.list(ctx, "damage")) as Rec[];

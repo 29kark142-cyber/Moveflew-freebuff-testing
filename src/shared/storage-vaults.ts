@@ -1,5 +1,6 @@
 // Storage vault rules shared by the warehouse screen and the server. Vaults are stored
 // as `workspace_records` JSONB documents, so no warehouse tables are needed.
+import type { VaultPhoto } from "./vault-photos";
 
 export const VAULT_STATUSES = ["available", "occupied", "reserved", "maintenance"] as const;
 export type VaultStatus = (typeof VAULT_STATUSES)[number];
@@ -34,6 +35,8 @@ export type StorageVault = {
   contactEmail: string;
   jobId: number | null;
   items: VaultItem[];
+  /** Compressed inspection photos, mirrored onto the linked job when saved. */
+  photos?: VaultPhoto[];
   moveInAt: string | null;
   /** Projected move-out; the vault frees up when this date passes and status changes. */
   moveOutAt: string | null;

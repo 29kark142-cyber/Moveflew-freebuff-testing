@@ -1,6 +1,8 @@
 // Customer live-tracking rules. The public portal derives its stepper, simulated
 // truck position and ETA from the same field timeline the crew writes, so the
 // customer view can never drift from the job record.
+import type { PublicCheckin } from "./checkin";
+import type { PublicVault } from "./vault-photos";
 
 export const TRACKING_STAGES = [
   { key: "en_route", label: "En Route", hint: "Crew heading to pickup" },
@@ -59,9 +61,23 @@ export type PublicTrackingPayload = {
   destination: string;
   timeline: TrackingTimeline;
   foreman: { name: string; phone: string; role: string; initials: string } | null;
+  /** Every assigned crew member, reduced to name and role for the customer. */
+  crew: PublicCrewMember[];
+  /** Latest driver milestone first; no coordinates or crew ids leave the server. */
+  checkins: PublicCheckin[];
+  lastCheckin: PublicCheckin | null;
+  /** Linked vault assets and captioned inspection photos. */
+  vaults: PublicVault[];
   /** Shipment checklist; status is derived from the crew's own timeline. */
   inventory: TrackingItem[];
   updatedAt: string;
+};
+
+export type PublicCrewMember = {
+  name: string;
+  initials: string;
+  role: string;
+  isDriver: boolean;
 };
 
 export type TrackingItemStatus = "loaded" | "in_transit" | "unloaded";
@@ -145,7 +161,10 @@ export function trackingInventory(
     value === "loaded" || value === "in_transit" || value === "unloaded";
   return items.slice(0, 40).map((item, index) => ({
     id: `item-${index}`,
-    name: String(item.name ?? "").trim().slice(0, 80) || `Item ${index + 1}`,
+    name:
+      String(item.name ?? "")
+        .trim()
+        .slice(0, 80) || `Item ${index + 1}`,
     quantity: Math.max(1, Math.round(Number(item.quantity) || 1)),
     status: valid(item.status) ? item.status : derived,
   }));

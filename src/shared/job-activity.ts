@@ -12,7 +12,10 @@ export type JobActivityKind =
   | "crew_shift_confirmed"
   | "crew_shift_declined"
   | "pre_move_24h_reminder"
-  | "pre_move_2h_reminder";
+  | "pre_move_2h_reminder"
+  | "replacement_assigned"
+  | "driver_checkin"
+  | "vault_photos_synced";
 
 export type JobActivityEvent = {
   /** Stable id, so an offline replay of the same operation never duplicates an event. */

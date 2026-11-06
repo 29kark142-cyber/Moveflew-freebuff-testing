@@ -4,6 +4,8 @@ import type { JobActivityEvent } from "./job-activity";
 import type { CrewShift } from "./shift";
 import type { PreMoveReminderState } from "./reminders";
 import type { MoveChecklistState } from "./move-checklist";
+import type { DriverCheckin } from "./checkin";
+import type { JobVaultRecord } from "./vault-photos";
 
 export type WorkspaceRole =
   | "admin"
@@ -90,6 +92,20 @@ export type Job = {
   crewShifts?: CrewShift[];
   /** 24h and 2h pre-move reminder dispatches written by the reminder engine. */
   preMoveReminders?: PreMoveReminderState;
+  /** Crew lead milestone check-ins with device GPS, newest first. */
+  driverCheckins?: DriverCheckin[];
+  /** Latest device fix, used by dispatch and the customer tracker. */
+  driverLocation?: {
+    lat: number;
+    lng: number;
+    accuracy: number | null;
+    at: string;
+    milestone: string;
+    label: string;
+    crewName: string;
+  } | null;
+  /** Vault assets and inspection photos mirrored from linked storage vaults. */
+  vaultGallery?: JobVaultRecord[];
   invoiceStatus: string;
   actualHours: number | null;
   finalTotal: number | null;

@@ -72,6 +72,7 @@ import JobRoutePricing from "@/components/workspace/JobRoutePricing";
 import JobFieldProgress from "@/components/workspace/JobFieldProgress";
 import CrewShiftStatus from "@/components/workspace/CrewShiftStatus";
 import ReminderConfigModal from "@/components/workspace/ReminderConfigModal";
+import VaultPhotoGallery from "@/components/workspace/VaultPhotoGallery";
 import SettingsRemindersPage from "@/pages/app/SettingsRemindersPage";
 import QuoteDispatch from "@/components/workspace/QuoteDispatch";
 import { routeTravelPricing } from "@shared/route-pricing";
@@ -2352,6 +2353,7 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
       <JobRoutePricing job={job} role={role} onSaved={() => refresh()} />
       <QuoteDispatch job={job} role={role} variant="panel" onSent={() => void refresh()} />
       <JobFieldProgress job={job} onRefresh={() => refresh()} />
+      <VaultPhotoGallery job={job} />
       <CrewShiftStatus job={job} role={role} onRefresh={() => refresh()} />
       <ReminderConfigModal jobId={job.id} role={role} onSent={() => refresh()} />
       <div className="ws-grid">

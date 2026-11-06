@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Camera,
   CheckCircle2,
   CircleAlert,
   Clock,
   MapPin,
   MessageSquare,
+  Navigation,
   PackageCheck,
   PackageOpen,
   Phone,
   RefreshCw,
   Truck,
+  Users,
+  Warehouse,
 } from "lucide-react";
 import RouteMap from "@/components/tracking/RouteMap";
 import { readTracking } from "@/lib/tracking-api";
@@ -60,6 +64,9 @@ const arrivalTime = (startHour: number): string => {
     new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60),
   );
 };
+
+const crewRoleLabel = (role: string): string =>
+  role === "crew_lead" ? "Crew foreman" : role === "driver" ? "Driver" : "Mover";
 
 const sinceLabel = (ms: number): string => {
   const seconds = Math.max(0, Math.round(ms / 1000));
@@ -293,6 +300,49 @@ export default function TrackingPage({ token }: { token: string }) {
           </dl>
         </section>
 
+        {/* Driver check-in progress */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Navigation className="h-4 w-4 text-blue-600" /> Driver progress
+            </h2>
+            <span className="text-xs text-slate-500">
+              {payload.lastCheckin
+                ? `Updated ${sinceLabel(Math.max(0, tick - Date.parse(payload.lastCheckin.at)))}`
+                : "Awaiting first check-in"}
+            </span>
+          </div>
+          {payload.lastCheckin ? (
+            <div className="mt-3 rounded-xl bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">{payload.lastCheckin.label}</p>
+                <span className="text-xs text-slate-500">{formatTime(payload.lastCheckin.at)}</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {payload.lastCheckin.by || "Your crew"}
+                {payload.lastCheckin.note ? ` · ${payload.lastCheckin.note}` : ""}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">
+              Your crew lead hasn't checked in yet. Progress updates appear here automatically.
+            </p>
+          )}
+          {payload.checkins.length > 1 && (
+            <ol className="mt-3 space-y-2 border-l border-slate-200 pl-3">
+              {payload.checkins.slice(0, 4).map((entry) => (
+                <li key={entry.id} className="text-xs">
+                  <span className="font-semibold text-slate-700">{entry.label}</span>
+                  <span className="ml-2 text-slate-400">{formatTime(entry.at)}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <p className="mt-2 text-[11px] text-slate-500">
+            Check-ins are sent by the crew lead from the job site, not a continuous GPS feed.
+          </p>
+        </section>
+
         {/* Stage stepper */}
         <section
           className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
@@ -355,6 +405,43 @@ export default function TrackingPage({ token }: { token: string }) {
               ? "Your crew hasn't started this move yet. This page updates automatically."
               : TRACKING_STAGES[stage.index]?.hint}
           </p>
+        </section>
+
+        {/* Assigned crew and driver */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Users className="h-4 w-4 text-blue-600" /> Your crew
+            </h2>
+            <span className="text-xs text-slate-500">
+              {payload.crew.length} crew member{payload.crew.length === 1 ? "" : "s"} assigned
+            </span>
+          </div>
+          {payload.crew.length ? (
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {payload.crew.map((member) => (
+                <li
+                  key={`${member.name}-${member.role}`}
+                  className="flex items-center gap-3 rounded-xl bg-slate-50 p-3"
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                    {member.initials}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{member.name}</span>
+                    <span className="text-xs text-slate-500">
+                      {crewRoleLabel(member.role)}
+                      {member.isDriver ? " · driver" : ""}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">
+              Crew assignment is being confirmed. This list updates automatically.
+            </p>
+          )}
         </section>
 
         {/* Map + animated route progress + ETA countdown */}
@@ -513,6 +600,70 @@ export default function TrackingPage({ token }: { token: string }) {
             list.
           </p>
         </section>
+
+        {/* Vault assets and inspection photos */}
+        {payload.vaults.length > 0 && (
+          <section
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+            aria-label="Vault assets and photos"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Warehouse className="h-4 w-4 text-blue-600" /> Vault assets &amp; photos
+              </h2>
+              <span className="flex items-center gap-1 text-xs text-slate-500">
+                <Camera className="h-3.5 w-3.5" />
+                {payload.vaults.reduce((total, vault) => total + vault.photos.length, 0)} photo(s)
+              </span>
+            </div>
+            <div className="mt-3 space-y-4">
+              {payload.vaults.map((vault) => (
+                <article key={vault.code}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">Vault {vault.code}</p>
+                    <span className="text-xs text-slate-500">
+                      {vault.assets.length} asset{vault.assets.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  {vault.assets.length > 0 && (
+                    <ul className="mt-2 flex flex-wrap gap-1.5">
+                      {vault.assets.map((asset, index) => (
+                        <li
+                          key={`${asset.name}-${index}`}
+                          className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600"
+                        >
+                          {asset.name} × {asset.quantity}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {vault.photos.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {vault.photos.map((photo) => (
+                        <figure key={photo.id}>
+                          <a href={photo.url} target="_blank" rel="noreferrer">
+                            <img
+                              src={photo.url}
+                              alt={photo.caption || `Inspection photo for vault ${vault.code}`}
+                              loading="lazy"
+                              className="h-28 w-full rounded-lg border border-slate-200 object-cover"
+                            />
+                          </a>
+                          <figcaption className="mt-1 text-[11px] leading-tight text-slate-500">
+                            {photo.caption}
+                          </figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              Photos are taken by the warehouse team when your items are checked into storage.
+            </p>
+          </section>
+        )}
 
         <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
           <Clock className="h-3.5 w-3.5" /> Refreshes every 20 seconds · updated{" "}

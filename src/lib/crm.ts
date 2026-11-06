@@ -1,3 +1,4 @@
+import type { ReplacementCandidate } from "@shared/crew-replacement";
 import type { ReminderSettings } from "@shared/reminders";
 import type {
   CrewMember,
@@ -209,6 +210,33 @@ export const crm = {
       `/jobs/${id}/shift-dispatch`,
       json("POST", {})
     ),
+  /** Ranked replacement crew for a declined or unassigned shift. */
+  findReplacements: (id: number) =>
+    crmFetch<{
+      jobId: number;
+      reference: string;
+      moveDate: string;
+      startHour: number;
+      duration: number;
+      truckId: number | null;
+      weekStart: string;
+      declined: { crewId: number; name: string; reason: string }[];
+      candidates: ReplacementCandidate[];
+    }>(`/jobs/${id}/replacements`),
+  /** Swaps one declined slot, mints a fresh shift token and notifies the replacement. */
+  assignReplacement: (id: number, value: { crewId: number; replaceCrewId?: number | null }) =>
+    crmFetch<
+      Job & {
+        replacement: {
+          jobId: number;
+          replaced: { crewId: number; name: string } | null;
+          candidate: { crewId: number; name: string };
+          crewIds: number[];
+          notified: number;
+          logged: number;
+        };
+      }
+    >(`/jobs/${id}/replacements`, json("POST", value)),
   distance: (origin: string, destination: string) =>
     crmFetch<{
       distanceMiles: number;

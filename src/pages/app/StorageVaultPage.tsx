@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, Loader2, Plus, ScanLine, Trash2, Warehouse, X } from "lucide-react";
+import { CalendarClock, Camera, Loader2, Plus, ScanLine, Trash2, Warehouse, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CameraScanner from "@/components/workspace/CameraScanner";
 import { crmFetch } from "@/lib/crm";
+import { shrinkImage } from "@/lib/photo";
 import { money } from "@shared/crm";
+import {
+  VAULT_PHOTO_LIMIT,
+  VAULT_PHOTO_MAX_CHARS,
+  vaultPhotos,
+  type VaultPhoto,
+} from "@shared/vault-photos";
 import {
   BILLING_MODES,
   dueForRelease,
@@ -88,7 +95,9 @@ export default function StorageVaultPage({ role }: { role: string }) {
   const selected = (vaults ?? []).find((vault) => vault.id === selectedId) ?? null;
 
   useEffect(() => {
-    setEdit(selected ? { ...selected, items: selected.items ?? [] } : null);
+    setEdit(
+      selected ? { ...selected, items: selected.items ?? [], photos: selected.photos ?? [] } : null,
+    );
   }, [selected]);
 
   const createVault = async () => {
@@ -124,7 +133,16 @@ export default function StorageVaultPage({ role }: { role: string }) {
     if (!edit) return;
     setBusy(true);
     try {
-      const saved = await crmFetch<StorageVault>(`/vaults/${edit.id}`, {
+      const saved = await crmFetch<
+        StorageVault & {
+          jobSync?: {
+            synced: boolean;
+            photoCount: number;
+            assetCount: number;
+            jobId: number | null;
+          };
+        }
+      >(`/vaults/${edit.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -142,13 +160,18 @@ export default function StorageVaultPage({ role }: { role: string }) {
           contactEmail: edit.contactEmail,
           jobId: edit.jobId,
           items: edit.items,
+          photos: vaultPhotos(edit.photos),
           moveInAt: edit.moveInAt || null,
           moveOutAt: edit.moveOutAt || null,
           invoiceDay: Math.max(1, Math.min(28, Number(edit.invoiceDay) || 1)),
           notes: edit.notes,
         }),
       });
-      toast.success(`Vault ${saved.code} saved`);
+      toast.success(
+        saved.jobSync?.synced
+          ? `Vault ${saved.code} saved · ${saved.jobSync.photoCount} photo(s) and ${saved.jobSync.assetCount} asset(s) synced to job #${saved.jobSync.jobId}`
+          : `Vault ${saved.code} saved`,
+      );
       await load();
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : "Could not save the vault");
@@ -212,6 +235,42 @@ export default function StorageVaultPage({ role }: { role: string }) {
     },
     [edit, itemCuft, scanMode, vaults],
   );
+
+  /**
+   * Compress inspection photos before storing them. The server mirrors the saved set onto the
+   * vault's linked job so the job sheet and customer tracker show the same gallery.
+   */
+  const addPhotos = async (files: FileList | null) => {
+    if (!edit || !files?.length) return;
+    const room = VAULT_PHOTO_LIMIT - vaultPhotos(edit.photos).length;
+    if (room <= 0) {
+      toast.error(`Vaults keep up to ${VAULT_PHOTO_LIMIT} photos. Remove one first.`);
+      return;
+    }
+    const added: VaultPhoto[] = [];
+    for (const file of Array.from(files).slice(0, room)) {
+      try {
+        let dataUrl = await shrinkImage(file, { maxDimension: 900, quality: 0.6 });
+        if (dataUrl.length > VAULT_PHOTO_MAX_CHARS)
+          dataUrl = await shrinkImage(file, { maxDimension: 640, quality: 0.5 });
+        if (dataUrl.length > VAULT_PHOTO_MAX_CHARS) {
+          toast.error(`${file.name || "That photo"} is too large after compression.`);
+          continue;
+        }
+        added.push({
+          id: `vp_${crypto.randomUUID()}`,
+          dataUrl,
+          caption: `${edit.code} inspection`,
+          kind: "inspection",
+          capturedAt: new Date().toISOString(),
+        });
+      } catch {
+        toast.error("Could not read that photo.");
+      }
+    }
+    if (added.length)
+      change({ photos: [...added, ...vaultPhotos(edit.photos)].slice(0, VAULT_PHOTO_LIMIT) });
+  };
 
   useEffect(() => {
     if (focusItem) itemInput.current?.focus();
@@ -649,6 +708,91 @@ export default function StorageVaultPage({ role }: { role: string }) {
                     <Plus size={14} />
                   </Button>
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-border p-3 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <b className="text-sm">Vault assets &amp; photos</b>
+                  <label className="ws-btn cursor-pointer">
+                    <Camera size={14} /> Add inspection photos
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      capture="environment"
+                      className="hidden"
+                      onChange={(event) => {
+                        void addPhotos(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Photos sync to the linked job and the customer tracking page when you save. Up to{" "}
+                  {VAULT_PHOTO_LIMIT} compressed photos.
+                </p>
+                <label className="text-sm">
+                  Linked job ID
+                  <input
+                    className="ws-input"
+                    type="number"
+                    min="1"
+                    placeholder="No job linked"
+                    value={edit.jobId ?? ""}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      change({
+                        jobId: event.target.value && Number.isFinite(next) ? next : null,
+                      });
+                    }}
+                  />
+                </label>
+                {vaultPhotos(edit.photos).length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {vaultPhotos(edit.photos).map((photo) => (
+                      <figure key={photo.id} className="space-y-1">
+                        <img
+                          src={photo.dataUrl}
+                          alt={photo.caption || `Vault ${edit.code} inspection`}
+                          className="h-24 w-full rounded-lg border border-border object-cover"
+                        />
+                        <input
+                          className="ws-input"
+                          aria-label="Photo caption"
+                          value={photo.caption}
+                          onChange={(event) =>
+                            change({
+                              photos: vaultPhotos(edit.photos).map((entry) =>
+                                entry.id === photo.id
+                                  ? { ...entry, caption: event.target.value.slice(0, 140) }
+                                  : entry,
+                              ),
+                            })
+                          }
+                        />
+                        <button
+                          type="button"
+                          className="ws-icon-btn"
+                          aria-label="Remove photo"
+                          onClick={() =>
+                            change({
+                              photos: vaultPhotos(edit.photos).filter(
+                                (entry) => entry.id !== photo.id,
+                              ),
+                            })
+                          }
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </figure>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Add a photo of the wrapped items in this vault; saving links it to the job.
+                  </p>
+                )}
               </div>
 
               <div className="rounded-xl border border-border p-3 space-y-2">

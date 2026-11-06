@@ -7,7 +7,10 @@ import {
   CircleAlert,
   Clock,
   Loader2,
+  Search,
+  UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +25,7 @@ import { crm } from "@/lib/crm";
 import { useI18n } from "@/lib/i18n";
 import type { Job, WorkspaceRole } from "@shared/crm";
 import { allConflicts, conflictsFor, type ScheduledJob } from "@shared/dispatch";
+import type { ReplacementCandidate } from "@shared/crew-replacement";
 import { jobActivity } from "@shared/job-activity";
 import {
   crewShifts,
@@ -54,6 +58,8 @@ import {
 import "./schedule.css";
 
 const DRAG_TYPE = "application/x-moveflew-schedule-job";
+const hoursLabel = (value: number) =>
+  `${Number.isInteger(value) ? value : Number(value.toFixed(1))}h`;
 const VIEWS: ScheduleView[] = ["month", "week", "day"];
 const STATUS_OPTIONS = [
   { value: "active", label: "Booked & deposit paid" },
@@ -117,6 +123,16 @@ export default function SchedulePage({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [replacementFor, setReplacementFor] = useState<{
+    job: Job;
+    replaceCrewId: number | null;
+  } | null>(null);
+  const [replacement, setReplacement] = useState<{
+    loading: boolean;
+    error: string;
+    panel: Awaited<ReturnType<typeof crm.findReplacements>> | null;
+  } | null>(null);
+  const [swapping, setSwapping] = useState<number | null>(null);
 
   const jobs = useMemo(() => data?.[0] ?? [], [data]);
   const trucks = useMemo(() => data?.[1] ?? [], [data]);
@@ -147,6 +163,16 @@ export default function SchedulePage({
       visible.filter((job) => shiftCounts(jobCrewShifts(job.crewShifts, job.crewIds)).declined > 0),
     [visible],
   );
+  const editingDeclined = useMemo(
+    () =>
+      editing
+        ? crewShifts(editing.crewShifts).filter(
+            (entry) =>
+              entry.status === "declined" && (editing.crewIds ?? []).includes(entry.crewId),
+          )
+        : [],
+    [editing],
+  );
 
   const openEdit = (job: Job, overrides: Partial<Draft> = {}) => {
     setEditing(job);
@@ -158,6 +184,94 @@ export default function SchedulePage({
     setDraft(null);
     setFormError("");
   };
+
+  /** Opens the replacement drawer and ranks crew against the job's current schedule. */
+  const openReplacement = async (job: Job, replaceCrewId: number | null = null) => {
+    setReplacementFor({ job, replaceCrewId });
+    setReplacement({ loading: true, error: "", panel: null });
+    try {
+      const panel = await crm.findReplacements(job.id);
+      setReplacement({ loading: false, error: "", panel });
+    } catch (reason) {
+      setReplacement({
+        loading: false,
+        error:
+          reason instanceof Error
+            ? reason.message
+            : tx("Could not load replacement crew.", "Не удалось загрузить замену."),
+        panel: null,
+      });
+    }
+  };
+  const closeReplacement = () => {
+    setReplacementFor(null);
+    setReplacement(null);
+    setSwapping(null);
+  };
+
+  /** One click: swap the declined member, mint a fresh token and notify the replacement. */
+  const swapCandidate = async (candidate: ReplacementCandidate) => {
+    if (!replacementFor || !canDispatch) return;
+    setSwapping(candidate.crewId);
+    try {
+      const saved = await crm.assignReplacement(replacementFor.job.id, {
+        crewId: candidate.crewId,
+        replaceCrewId: replacementFor.replaceCrewId,
+      });
+      const info = saved.replacement;
+      const notified = info?.notified ?? 0;
+      toast.success(
+        info?.replaced
+          ? tx(
+              `${info.candidate.name} replacing ${info.replaced.name} · shift ${
+                notified > 0 ? "notification sent" : "message logged"
+              }`,
+              `${info.candidate.name} заменяет ${info.replaced.name} · ${
+                notified > 0 ? "уведомление отправлено" : "сообщение записано"
+              }`,
+            )
+          : tx("Replacement assigned.", "Замена назначена."),
+      );
+      if (editing && editing.id === saved.id) {
+        setEditing(saved);
+        setDraft((current) => (current ? { ...current, crewIds: saved.crewIds ?? [] } : current));
+      }
+      closeReplacement();
+      await refresh();
+    } catch (reason) {
+      setReplacement((current) => ({
+        loading: false,
+        error:
+          reason instanceof Error
+            ? reason.message
+            : tx("Could not assign the replacement.", "Не удалось назначить замену."),
+        panel: current?.panel ?? null,
+      }));
+    } finally {
+      setSwapping(null);
+    }
+  };
+
+  const roleText = (role: string) =>
+    role === "Driver"
+      ? tx("Driver", "Водитель")
+      : role === "Crew lead"
+        ? tx("Crew lead", "Бригадир")
+        : tx("Helper", "Грузчик");
+  const chipText = (chip: string) =>
+    chip === "Free all day"
+      ? tx("Free all day", "Свободен весь день")
+      : chip.startsWith("Free ")
+        ? tx(chip, chip.replace("Free ", "Свободен "))
+        : chip;
+  const badgeText = (badge: string) =>
+    badge === "Driving permission"
+      ? tx("Driving permission", "Водительские права")
+      : badge === "Crew lead"
+        ? tx("Crew lead", "Бригадир")
+        : badge.startsWith("Skill ")
+          ? tx(badge, badge.replace("Skill ", "Навык "))
+          : badge;
 
   const dragStart = (event: DragEvent, job: Job) => {
     event.dataTransfer.setData(DRAG_TYPE, String(job.id));
@@ -453,14 +567,18 @@ export default function SchedulePage({
               `${declinedJobs.length} заказ(ов) с отказом сотрудника — назначьте замену.`,
             )}{" "}
             {declinedJobs.map((job) => (
-              <button
-                key={job.id}
-                type="button"
-                className="schedule-linkbtn"
-                onClick={() => openEdit(job)}
-              >
-                #{job.id}
-              </button>
+              <span key={job.id} className="schedule-declined-item">
+                <button type="button" className="schedule-linkbtn" onClick={() => openEdit(job)}>
+                  #{job.id}
+                </button>
+                <button
+                  type="button"
+                  className="schedule-replace-btn"
+                  onClick={() => void openReplacement(job)}
+                >
+                  <Search size={13} /> {tx("Find Replacement", "Найти замену")}
+                </button>
+              </span>
             ))}
           </span>
         </div>
@@ -625,6 +743,31 @@ export default function SchedulePage({
 
             <fieldset className="schedule-crew">
               <legend>{tx("Assigned crew", "Назначенная бригада")}</legend>
+              <div className="schedule-crew__replace">
+                {editingDeclined.map((entry) => (
+                  <button
+                    key={entry.token}
+                    type="button"
+                    className="schedule-replace-btn"
+                    onClick={() => void openReplacement(editing, entry.crewId)}
+                  >
+                    <Search size={13} />
+                    {tx(
+                      `Find replacement for ${entry.name || `Crew #${entry.crewId}`}`,
+                      `Найти замену для ${entry.name || `сотрудника #${entry.crewId}`}`,
+                    )}
+                  </button>
+                ))}
+                {!editingDeclined.length && (
+                  <button
+                    type="button"
+                    className="schedule-replace-btn"
+                    onClick={() => void openReplacement(editing)}
+                  >
+                    <Search size={13} /> {tx("Find Replacement", "Найти замену")}
+                  </button>
+                )}
+              </div>
               <div className="schedule-crew__choices">
                 {crew.map((member) => (
                   <label key={member.id}>
@@ -738,6 +881,129 @@ export default function SchedulePage({
             </div>
           </div>
         </Modal>
+      )}
+
+      {replacementFor && (
+        <div
+          className="schedule-drawer-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeReplacement();
+          }}
+        >
+          <aside
+            className="schedule-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={tx("Replacement Crew", "Замена бригады")}
+          >
+            <header className="schedule-drawer__head">
+              <div>
+                <h2>{tx("Replacement Crew", "Замена бригады")}</h2>
+                <p>
+                  #{replacementFor.job.id} ·{" "}
+                  {replacementFor.job.customerName || replacementFor.job.title} ·{" "}
+                  {dayLabel(replacementFor.job.moveDate)} {timeLabel(replacementFor.job.startHour)}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="schedule-drawer__close"
+                onClick={closeReplacement}
+                aria-label={tx("Close", "Закрыть")}
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            {replacement?.panel && replacement.panel.declined.length > 0 && (
+              <p className="schedule-drawer__declined">
+                <CircleAlert size={14} />
+                <span>
+                  {tx("Replacing", "Замена")}:{" "}
+                  {replacement.panel.declined
+                    .map((entry) => `${entry.name}${entry.reason ? ` (${entry.reason})` : ""}`)
+                    .join(", ")}
+                </span>
+              </p>
+            )}
+
+            {replacement?.loading && (
+              <LoadingBlock label={tx("Checking availability…", "Проверяем доступность…")} />
+            )}
+
+            {!replacement?.loading && replacement?.error && (
+              <div className="schedule-drawer__error" role="alert">
+                <CircleAlert size={15} />
+                <p>{replacement.error}</p>
+              </div>
+            )}
+
+            {!replacement?.loading &&
+              !replacement?.error &&
+              replacement?.panel &&
+              replacement.panel.candidates.length === 0 && (
+                <p className="schedule-drawer__empty">
+                  {tx(
+                    "No available crew for this window. Adjust the date or spread the roster.",
+                    "На это время нет свободных сотрудников. Измените дату или распределите бригаду.",
+                  )}
+                </p>
+              )}
+
+            {!replacement?.loading &&
+              !replacement?.error &&
+              replacement?.panel &&
+              replacement.panel.candidates.length > 0 && (
+                <>
+                  <p className="schedule-drawer__hint">
+                    {tx(
+                      "Ranked by hours already scheduled this week.",
+                      "Отсортировано по запланированным часам на этой неделе.",
+                    )}
+                  </p>
+                  <ul className="schedule-candidates">
+                    {replacement.panel.candidates.map((candidate) => (
+                      <li key={candidate.crewId} className="schedule-candidate">
+                        <div className="schedule-candidate__head">
+                          <b>{candidate.name}</b>
+                          <em>{roleText(candidate.roleLabel)}</em>
+                          <span>
+                            {hoursLabel(candidate.weeklyHours)}{" "}
+                            {tx("scheduled this week", "запланировано на этой неделе")}
+                          </span>
+                        </div>
+                        <div className="schedule-candidate__chips">
+                          {candidate.availability.map((chip) => (
+                            <span key={chip}>{chipText(chip)}</span>
+                          ))}
+                          <span className="is-hours">
+                            {hoursLabel(candidate.dayHours)} {tx("this day", "в этот день")}
+                          </span>
+                        </div>
+                        <div className="schedule-candidate__badges">
+                          {candidate.qualifications.map((badge) => (
+                            <i key={badge}>{badgeText(badge)}</i>
+                          ))}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => void swapCandidate(candidate)}
+                          disabled={swapping !== null || !canDispatch}
+                        >
+                          {swapping === candidate.crewId ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <UserPlus size={14} />
+                          )}
+                          {tx("Swap & Notify", "Заменить и уведомить")}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+          </aside>
+        </div>
       )}
     </div>
   );

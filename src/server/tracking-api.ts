@@ -8,6 +8,8 @@ import {
   type PublicTrackingPayload,
   type TrackingTimeline,
 } from "@/shared/tracking";
+import { publicCheckins } from "@/shared/checkin";
+import { publicVaultGallery } from "@/shared/vault-photos";
 
 const PHASES = [
   "start_travel",
@@ -92,6 +94,13 @@ export async function readTracking(token: string): Promise<PublicTrackingPayload
 
   const name = String(company?.name ?? "").trim() || "Your moving company";
   const timeline = sanitizeTimeline(data["timeline"]);
+  const checkins = publicCheckins(data["driverCheckins"]);
+  const crewMembers = crew.map((member) => ({
+    name: member.name || "Crew member",
+    initials: initials(member.name || "Crew member"),
+    role: member.crewRole || (member.isDriver ? "driver" : "helper"),
+    isDriver: member.isDriver,
+  }));
 
   return {
     reference: jobReference(jobId),
@@ -116,6 +125,10 @@ export async function readTracking(token: string): Promise<PublicTrackingPayload
         ? (data["inventory"] as { name?: unknown; quantity?: unknown; status?: unknown }[])
         : [],
     ),
+    crew: crewMembers,
+    checkins,
+    lastCheckin: checkins[0] ?? null,
+    vaults: publicVaultGallery(data["vaultGallery"]),
     foreman: foreman
       ? {
           name: foreman.name || "Crew foreman",

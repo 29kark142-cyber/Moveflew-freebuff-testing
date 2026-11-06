@@ -38,6 +38,7 @@ import { Route as ShiftTokenRouteImport } from './routes/shift.$token'
 import { Route as ApiCrmSplatRouteImport } from './routes/api/crm/$'
 import { Route as ApiCronNotificationsRouteImport } from './routes/api/cron/notifications'
 import { Route as ApiCronRemindersRouteImport } from './routes/api.cron.reminders'
+import { Route as ApiFieldSplatRouteImport } from './routes/api/field/$'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicV1LeadsRouteImport } from './routes/api/public/v1/leads'
@@ -195,6 +196,11 @@ const ApiCronRemindersRoute = ApiCronRemindersRouteImport.update({
   path: '/api/cron/reminders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFieldSplatRoute = ApiFieldSplatRouteImport.update({
+  id: '/api/field/$',
+  path: '/api/field/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   id: '/api/webhooks/stripe',
   path: '/api/webhooks/stripe',
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/cron/reminders': typeof ApiCronRemindersRoute
+  '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
@@ -319,6 +326,7 @@ export interface FileRoutesByTo {
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/cron/reminders': typeof ApiCronRemindersRoute
+  '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
@@ -361,6 +369,7 @@ export interface FileRoutesById {
   '/api/crm/$': typeof ApiCrmSplatRoute
   '/api/cron/notifications': typeof ApiCronNotificationsRoute
   '/api/cron/reminders': typeof ApiCronRemindersRoute
+  '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
@@ -404,6 +413,7 @@ export interface FileRouteTypes {
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/cron/reminders'
+    | '/api/field/$'
     | '/api/webhooks/stripe'
     | '/api/public/payments/webhook'
     | '/api/public/v1/leads'
@@ -445,6 +455,7 @@ export interface FileRouteTypes {
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/cron/reminders'
+    | '/api/field/$'
     | '/api/webhooks/stripe'
     | '/api/public/payments/webhook'
     | '/api/public/v1/leads'
@@ -486,6 +497,7 @@ export interface FileRouteTypes {
     | '/api/crm/$'
     | '/api/cron/notifications'
     | '/api/cron/reminders'
+    | '/api/field/$'
     | '/api/webhooks/stripe'
     | '/api/public/payments/webhook'
     | '/api/public/v1/leads'
@@ -528,6 +540,7 @@ export interface RootRouteChildren {
   ApiCrmSplatRoute: typeof ApiCrmSplatRoute
   ApiCronNotificationsRoute: typeof ApiCronNotificationsRoute
   ApiCronRemindersRoute: typeof ApiCronRemindersRoute
+  ApiFieldSplatRoute: typeof ApiFieldSplatRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicV1LeadsRoute: typeof ApiPublicV1LeadsRoute
@@ -745,6 +758,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/field/$': {
+      id: '/api/field/$'
+      path: '/api/field/$'
+      fullPath: '/api/field/$'
+      preLoaderRoute: typeof ApiFieldSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/stripe': {
       id: '/api/webhooks/stripe'
       path: '/api/webhooks/stripe'
@@ -849,6 +869,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCrmSplatRoute: ApiCrmSplatRoute,
   ApiCronNotificationsRoute: ApiCronNotificationsRoute,
   ApiCronRemindersRoute: ApiCronRemindersRoute,
+  ApiFieldSplatRoute: ApiFieldSplatRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicV1LeadsRoute: ApiPublicV1LeadsRoute,

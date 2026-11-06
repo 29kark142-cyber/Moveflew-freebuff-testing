@@ -162,6 +162,7 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     contactEmail: "",
     jobId: null,
     items: [],
+    photos: [],
     moveInAt: null,
     moveOutAt: null,
     invoiceDay: 1,
@@ -248,6 +249,10 @@ const SERVER_FIELDS = new Set([
   "crewDispatch",
   "crewShifts",
   "preMoveReminders",
+  // Driver check-ins and the vault gallery are written by the field and storage endpoints.
+  "driverCheckins",
+  "driverLocation",
+  "vaultGallery",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -1204,6 +1209,21 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
   // Vaults hold customer belongings and contact details, so they stay with office staff.
   if (head === "vaults" && !["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
     fail(403, "Storage vaults are for office staff");
+  // Saving a vault mirrors its inspection photos and assets onto the active job payload.
+  if (head === "vaults" && id && method === "PATCH") {
+    const saved = (await update(ctx, "vault", id, await body())) as Record<string, unknown>;
+    const { syncVaultToJob } = await import("./storage-vaults");
+    const { vaultPhotos } = await import("../shared/vault-photos");
+    const jobSync = await syncVaultToJob(
+      {
+        getJob: (jobId) => getOne(ctx, "job", jobId),
+        saveJob: (jobId, patch) => saveData(ctx, jobId, patch),
+        actor: ctx.email || "Office",
+      },
+      { ...saved, photos: vaultPhotos(saved["photos"]) } as never,
+    );
+    return { ...saved, jobSync };
+  }
   // Crew members work through the field endpoints; they cannot edit jobs or customers directly.
   if (ctx.role === "crew" && method !== "GET" && (head === "jobs" || head === "customers"))
     fail(403, "Crew members can update jobs only from the field screen");
@@ -1443,6 +1463,39 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
           if (error instanceof ReminderError) fail(error.status, error.message);
           throw error;
         }
+      }
+    }
+    // One-click replacement crew: rank eligible crew, then swap and notify in one action.
+    if (sub === "replacements") {
+      if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
+        fail(403, "Only dispatch staff can find replacement crew");
+      const { ReplacementError, assignReplacement, replacementPanel } =
+        await import("./crew-replacement");
+      const { data: workspace } = await ctx.db
+        .from("workspaces")
+        .select("name")
+        .eq("id", requireWs(ctx))
+        .maybeSingle();
+      const deps = {
+        getJob: (jobId: number) => getOne(ctx, "job", jobId),
+        listCrew: async () =>
+          (await list(ctx, "crew")).map((row) => row as Record<string, unknown>),
+        listJobs: async () => (await list(ctx, "job")).map((row) => row as Record<string, unknown>),
+        save: (jobId: number, patch: Record<string, unknown>) => saveData(ctx, jobId, patch),
+        actor: ctx.email || "Dispatch",
+        origin: ctx.origin ?? "https://invalid.local",
+        companyName: String(workspace?.name ?? ""),
+      };
+      try {
+        if (method === "GET") return replacementPanel(deps, id);
+        if (method === "POST") {
+          const result = await assignReplacement(deps, id, await body());
+          const saved = toRecord(await getOne(ctx, "job", id), requireWs(ctx));
+          return { ...saved, replacement: result };
+        }
+      } catch (error) {
+        if (error instanceof ReplacementError) fail(error.status, error.message);
+        throw error;
       }
     }
     if (sub === "clock" && method === "POST") {
