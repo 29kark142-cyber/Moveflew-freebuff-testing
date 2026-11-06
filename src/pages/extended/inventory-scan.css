@@ -1,0 +1,50 @@
+.inv-label-sheet {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  margin-top: 12px;
+}
+
+.inv-label {
+  border: 1px dashed var(--border, #cbd5e1);
+  border-radius: 10px;
+  padding: 8px;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.inv-label img {
+  height: 120px;
+  width: 120px;
+}
+
+.inv-label figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  color: var(--muted-foreground, #64748b);
+}
+
+.inv-label figcaption b {
+  color: var(--foreground, #0f172a);
+  font-size: 12px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .inv-label-sheet,
+  .inv-label-sheet * {
+    visibility: visible;
+  }
+  .inv-label-sheet {
+    position: absolute;
+    inset: 0;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .inv-page-tools .ws-card-title {
+    display: none;
+  }
+}

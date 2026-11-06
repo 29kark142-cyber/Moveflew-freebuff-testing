@@ -105,7 +105,7 @@ async function sendSms(to: string, body: string): Promise<Delivery> {
   }
 }
 
-async function sendEmail(to: string, subject: string, body: string): Promise<Delivery> {
+export async function sendEmail(to: string, subject: string, body: string): Promise<Delivery> {
   const key = process.env["SENDGRID_API_KEY"];
   const from = process.env["MESSAGING_FROM_EMAIL"];
   if (!key || !from) {

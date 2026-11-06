@@ -1,461 +1,559 @@
 import {
+  CalendarDays,
+  Camera,
   CheckCircle2,
   CircleAlert,
-  ClipboardList,
-  CreditCard,
-  ExternalLink,
+  Download,
   FileText,
   LoaderCircle,
-  PackageCheck,
+  MapPin,
   RefreshCw,
+  Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Brand from "@/components/Brand";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { CrmApiError } from "@/lib/crm";
-import { useI18n } from "@/lib/i18n";
-import { engage, type PortalData } from "@/lib/engage-api";
+import { portalApi, PortalApiError, type PortalJob, type PortalPayload } from "@/lib/portal-api";
 import "@/engagement.css";
 
-export default function CustomerPortal({
-  params,
-}: {
-  params: { token: string };
-}) {
-  const { t } = useI18n();
+type Mode = "date_change" | "address";
+
+const money = (cents: number) =>
+  new Intl.NumberFormat(document.documentElement.lang === "ru" ? "ru-RU" : "en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+function friendly(reason: unknown, fallback: string) {
+  if (reason instanceof PortalApiError && reason.status === 404) return fallback;
+  return reason instanceof Error ? reason.message : fallback;
+}
+
+/** Compress a customer photo in the browser so uploads stay small and predictable. */
+function compressPhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      reject(new Error("Photos must be JPEG, PNG or WebP."));
+      return;
+    }
+    if (file.size > 8_000_000) {
+      reject(new Error("Each photo must be smaller than 8 MB."));
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, 1400 / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("This browser cannot prepare the photo."));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.78));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("That file could not be read as a photo."));
+    };
+    image.src = url;
+  });
+}
+
+export default function CustomerPortal({ params }: { params: { token: string } }) {
   const token = params.token;
-  const pending = useMemo(
-    () =>
-      new URLSearchParams(window.location.search).get("checkout") === "success",
-    []
-  );
-  const [data, setData] = useState<PortalData | null>(null);
+  const [data, setData] = useState<PortalPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState(
-    pending
-      ? "Your test checkout was opened. Invoice status changes only after a verified payment webhook; this portal will refresh while pending."
-      : ""
+  const [notice, setNotice] = useState("");
+  const [jobId, setJobId] = useState<number | null>(null);
+  const [mode, setMode] = useState<Mode>("date_change");
+  const [requestedDate, setRequestedDate] = useState("");
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [claimType, setClaimType] = useState<"damage" | "missing" | "other">("damage");
+  const [claimDescription, setClaimDescription] = useState("");
+  const [claimAmount, setClaimAmount] = useState("");
+  const [claimSaving, setClaimSaving] = useState(false);
+
+  const selected = useMemo(
+    () => data?.jobs.find((job) => job.id === jobId) ?? data?.jobs[0] ?? null,
+    [data, jobId],
   );
-  const [selectedJobId, setSelectedJobId] = useState("");
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [submittingInventory, setSubmittingInventory] = useState(false);
-  const [checkingOut, setCheckingOut] = useState<number | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const result = await engage.portal(token);
-        if (active) {
-          setData(result);
-          setError("");
-          setSelectedJobId(
-            current => current || String(result.jobs[0]?.id || "")
-          );
-        }
-      } catch (reason) {
-        if (active)
-          setError(
-            publicError(
-              reason,
-              "This customer portal link is unavailable or has expired."
-            )
-          );
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void load();
-    const timer = pending
-      ? window.setInterval(() => void load(), 5000)
-      : undefined;
-    return () => {
-      active = false;
-      if (timer) window.clearInterval(timer);
-    };
-  }, [token, pending]);
-
-  const selectedJob = data?.jobs.find(job => String(job.id) === selectedJobId);
-  useEffect(() => {
-    if (!selectedJob) return;
-    const items = Array.isArray(selectedJob.inventory)
-      ? selectedJob.inventory
-      : [];
-    setQuantities(
-      Object.fromEntries(
-        items.map((item: Record<string, any>) => [
-          String(item.key || item.name),
-          Math.max(0, Number(item.quantity || 0)),
-        ])
-      )
-    );
-  }, [selectedJobId, data]);
-
-  const submitInventory = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedJob) return;
-    const inventory = Array.isArray(selectedJob.inventory)
-      ? selectedJob.inventory
-      : [];
-    const items = inventory
-      .map((item: Record<string, any>) => ({
-        key: item.key,
-        name: item.name,
-        quantity: quantities[String(item.key || item.name)] || 0,
-      }))
-      .filter(item => item.quantity > 0);
-    setSubmittingInventory(true);
-    setNotice("");
+  const load = async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
-      await engage.submitPortalInventory(token, {
-        jobId: Number(selectedJob.id),
-        items,
-      });
-      setNotice(
-        "Your inventory selection was submitted for staff review. It did not change a signed estimate or booking."
+      const payload = await portalApi.read(token);
+      setData(payload);
+      setJobId((current) =>
+        payload.jobs.some((job) => job.id === current) ? current : (payload.jobs[0]?.id ?? null),
       );
+      setError("");
     } catch (reason) {
-      setNotice(
-        publicError(reason, "We could not submit your inventory for review.")
-      );
+      setError(friendly(reason, "This customer portal link is unavailable or has expired."));
     } finally {
-      setSubmittingInventory(false);
+      setLoading(false);
     }
   };
-  const checkout = async (invoice: Record<string, any>) => {
-    const balance = Number(invoice.balanceCents || 0);
-    if (balance < 50) return;
-    setCheckingOut(Number(invoice.id));
+
+  useEffect(() => {
+    void load();
+    // The token is the URL credential; reload only when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    if (!selected) return;
+    setOrigin("");
+    setDestination("");
+    setRequestedDate("");
+    setNotes("");
+  }, [selected?.id]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selected) return;
+    setSaving(true);
     setNotice("");
     try {
-      const result = await engage.portalCheckout(token, Number(invoice.id), {
-        origin: window.location.origin,
-        amountCents: balance,
+      await portalApi.request(token, {
+        jobId: selected.id,
+        kind: mode,
+        ...(mode === "date_change" ? { requestedDate } : {}),
+        ...(mode === "address"
+          ? { origin: origin.trim() || undefined, destination: destination.trim() || undefined }
+          : {}),
+        ...(notes.trim() ? { notes: notes.trim() } : {}),
       });
-      window.open(result.url, "_blank", "noopener,noreferrer");
       setNotice(
-        "TEST checkout opened in a new tab. Returning here does not mark an invoice paid; verified payment processing updates the status."
+        "Your request was sent to the dispatch team. You will be contacted once it is reviewed; nothing has changed automatically.",
       );
+      setNotes("");
+      await load(true);
     } catch (reason) {
-      setNotice(publicError(reason, "We could not open TEST checkout."));
+      setNotice(friendly(reason, "We could not submit your request."));
     } finally {
-      setCheckingOut(null);
+      setSaving(false);
+    }
+  };
+
+  const submitClaim = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selected) return;
+    const claimedCents = claimAmount.trim() ? Math.round(Number(claimAmount) * 100) : 0;
+    if (!Number.isFinite(claimedCents) || claimedCents < 0) {
+      setNotice("Enter a valid claimed amount, or leave it blank.");
+      return;
+    }
+    setClaimSaving(true);
+    setNotice("");
+    try {
+      await portalApi.claim(token, {
+        jobId: selected.id,
+        type: claimType,
+        description: claimDescription.trim(),
+        claimedCents,
+      });
+      setNotice(
+        "Your claim was submitted for review. The office will contact you about the next step.",
+      );
+      setClaimDescription("");
+      setClaimAmount("");
+      await load(true);
+    } catch (reason) {
+      setNotice(friendly(reason, "We could not submit this claim."));
+    } finally {
+      setClaimSaving(false);
+    }
+  };
+
+  const upload = async (files: FileList | null) => {
+    if (!selected || !files?.length) return;
+    setUploading(true);
+    setNotice("");
+    try {
+      const photos = [];
+      for (const file of Array.from(files).slice(0, 6))
+        photos.push({ name: file.name, dataUrl: await compressPhoto(file) });
+      const result = await portalApi.uploadPhotos(token, { jobId: selected.id, photos });
+      setNotice(
+        `${result.photos.length} photo${result.photos.length === 1 ? "" : "s"} saved to your move.${
+          result.rejected ? ` ${result.rejected} file(s) were skipped.` : ""
+        }`,
+      );
+      await load(true);
+    } catch (reason) {
+      setNotice(friendly(reason, "We could not upload those photos."));
+    } finally {
+      setUploading(false);
     }
   };
 
   if (loading)
     return (
-      <PortalFrame>
+      <Frame>
         <p className="eg-public-loading">
-          <LoaderCircle className="ws-spin" size={18} />{" "}
-          {t("Loading your portal…")}
+          <LoaderCircle className="ws-spin" size={18} /> Loading your portal…
         </p>
-      </PortalFrame>
+      </Frame>
     );
   if (error && !data)
     return (
-      <PortalFrame>
-        <PublicError message={error} />
-      </PortalFrame>
+      <Frame>
+        <section className="eg-public-card eg-public-error">
+          <CircleAlert size={30} />
+          <h1>Portal unavailable</h1>
+          <p>{error}</p>
+        </section>
+      </Frame>
     );
   if (!data) return null;
+
+  const photos = selected?.photos ?? [];
+  const photoUrl = (id: string) => `/api/public/portal/${encodeURIComponent(token)}/photos/${id}`;
+
   return (
-    <PortalFrame company={data.company?.name}>
+    <Frame company={data.company.name}>
       <div className="eg-portal-intro">
         <div>
-          <span className="eg-public-kicker">{t("Customer portal")}</span>
-          <h1>
-            {t("Hello, {name}", { name: data.customer?.name || t("customer") })}
-          </h1>
+          <span className="eg-public-kicker">Customer portal</span>
+          <h1>Hello, {data.customer.name || "customer"}</h1>
           <p>
-            {t(
-              "This portal shows only the jobs, invoices, storage records, and documents linked to this access link."
-            )}
+            Request a new move date, update your addresses, add inventory photos, and download your
+            estimate or invoice. Changes are reviewed by the office before they take effect.
           </p>
         </div>
-        <button className="ws-btn" onClick={() => window.location.reload()}>
-          <RefreshCw size={14} />
-          {t("Refresh")}
+        <button className="ws-btn" onClick={() => void load()}>
+          <RefreshCw size={14} /> Refresh
         </button>
       </div>
+
       {notice && (
-        <div
-          className={
-            /submitted|opened|verified/.test(notice)
-              ? "eg-success"
-              : "eg-public-error-inline"
-          }
-        >
-          {t(notice)}
+        <div className={/sent|saved|photo/i.test(notice) ? "eg-success" : "eg-public-error-inline"}>
+          {notice}
         </div>
       )}
+
       <section className="eg-portal-section">
-        <h2>{t("Jobs and proposals")}</h2>
+        <h2>Your moves</h2>
         <div className="eg-portal-grid">
-          {data.jobs.map(job => (
+          {data.jobs.map((job) => (
             <article className="eg-public-card" key={job.id}>
-              <b>{job.title || t("Move")}</b>
+              <b>{job.title}</b>
               <p>
-                {job.moveDate || "—"}{" "}
-                {job.startHour !== undefined ? `· ${job.startHour}:00` : ""}
+                <CalendarDays size={14} /> {job.moveDate || "Date not scheduled"}
               </p>
               <p>
                 {job.origin || "—"} → {job.destination || "—"}
               </p>
               <span className="eg-raw-status">{job.status || "—"}</span>
-              {job.proposalToken && (
-                <a
-                  className="eg-public-submit eg-inline-link"
-                  href={`/proposal/${job.proposalToken}`}
-                >
-                  <FileText size={15} />
-                  {t("Open proposal")}
-                </a>
-              )}
-            </article>
-          ))}
-        </div>
-        {!data.jobs.length && (
-          <p className="eg-muted">
-            {t("No linked jobs are available in this portal.")}
-          </p>
-        )}
-      </section>
-      <section className="eg-portal-section">
-        <h2>{t("Invoices and balances")}</h2>
-        <div className="eg-portal-grid">
-          {data.invoices.map(invoice => {
-            const balance = Number(invoice.balanceCents || 0);
-            return (
-              <article className="eg-public-card" key={invoice.id}>
-                <b>
-                  {invoice.invoiceNumber ||
-                    t("Invoice #{id}", { id: invoice.id })}
-                </b>
-                <p>
-                  {t("Balance")}: <strong>{moneyCents(balance)}</strong>
-                </p>
-                <span className="eg-raw-status">{invoice.status || "—"}</span>
-                {balance >= 50 ? (
-                  <button
-                    className="eg-public-submit"
-                    disabled={checkingOut === Number(invoice.id)}
-                    onClick={() => void checkout(invoice)}
-                  >
-                    <CreditCard size={15} />
-                    {t(
-                      checkingOut === Number(invoice.id)
-                        ? "Opening TEST checkout…"
-                        : "Pay in TEST checkout"
-                    )}
-                  </button>
-                ) : (
-                  <small>{t("No eligible balance for TEST checkout.")}</small>
-                )}
-              </article>
-            );
-          })}
-        </div>
-        {!data.invoices.length && (
-          <p className="eg-muted">
-            {t("No linked invoices are available in this portal.")}
-          </p>
-        )}
-      </section>
-      <section className="eg-portal-section">
-        <h2>{t("Storage")}</h2>
-        <div className="eg-portal-grid">
-          {data.storageAccounts.map(account => (
-            <article className="eg-public-card" key={account.id}>
-              <b>{account.kind || t("Storage account")}</b>
-              <p>
-                {t("Status")}:{" "}
-                <span className="eg-raw-status">{account.status || "—"}</span>
-              </p>
-              <p>
-                {account.startDate || "—"}
-                {account.endDate ? ` — ${account.endDate}` : ""}
-              </p>
-            </article>
-          ))}
-        </div>
-        {data.storageItems.length ? (
-          <ul className="eg-storage-list">
-            {data.storageItems.map(item => (
-              <li key={item.id}>
-                <PackageCheck size={15} />
-                <span>
-                  {item.name} × {item.quantity}
-                </span>
-                <small>{item.status || "—"}</small>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="eg-muted">
-            {t("No linked storage items are available.")}
-          </p>
-        )}
-      </section>
-      <section className="eg-portal-section">
-        <h2>{t("Documents and recorded terms")}</h2>
-        <div className="eg-document-list">
-          {data.documents?.map(document => (
-            <a
-              key={document.id || document.url}
-              href={document.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <FileText size={15} />
-              {document.name || t("Document")}
-              <ExternalLink size={13} />
-            </a>
-          ))}
-        </div>
-        <div className="eg-contract-list">
-          {data.jobs
-            .filter(job => job.signature || job.completedSignature)
-            .map(job => (
-              <div key={job.id}>
-                <ClipboardList size={15} />
-                <span>{job.title || t("Move")}</span>
-                <small>
-                  {job.signature
-                    ? t("Proposal acceptance recorded")
-                    : t("Completion signature recorded")}
-                </small>
-              </div>
-            ))}
-        </div>
-        {!data.documents?.length &&
-          !data.jobs.some(job => job.signature || job.completedSignature) && (
-            <p className="eg-muted">
-              {t("No linked documents or recorded signatures are available.")}
-            </p>
-          )}
-      </section>
-      <section className="eg-portal-section">
-        <h2>{t("Inventory for staff review")}</h2>
-        <p>
-          {t(
-            "Select quantities from the canonical items already associated with a linked job. Submission is reviewed by staff and does not silently change a signed quote or booking."
-          )}
-        </p>
-        {data.jobs.length ? (
-          <form
-            className="eg-public-card eg-inventory-form"
-            onSubmit={submitInventory}
-          >
-            <label>
-              {t("Linked job")}
-              <select
-                value={selectedJobId}
-                onChange={event => setSelectedJobId(event.target.value)}
+              <button
+                className="eg-public-submit eg-inline-link"
+                onClick={() => setJobId(job.id)}
+                disabled={selected?.id === job.id}
               >
-                {data.jobs.map(job => (
+                {selected?.id === job.id ? "Managing this move" : "Manage this move"}
+              </button>
+            </article>
+          ))}
+        </div>
+        {!data.jobs.length && <p className="eg-muted">No jobs are linked to this portal yet.</p>}
+      </section>
+
+      {selected && (
+        <section className="eg-portal-section">
+          <h2>Change a date or address</h2>
+          <p>
+            Requests are saved on your job and alert the dispatch team. A new date does not change
+            your booking until the office confirms it.
+          </p>
+          <form className="eg-public-card eg-inventory-form" onSubmit={submit}>
+            <label>
+              Move
+              <select
+                value={selected.id}
+                onChange={(event) => setJobId(Number(event.target.value))}
+              >
+                {data.jobs.map((job) => (
                   <option key={job.id} value={job.id}>
-                    {job.title || `Job #${job.id}`}
+                    {job.title} · {job.moveDate || "unscheduled"}
                   </option>
                 ))}
               </select>
             </label>
-            {selectedJob &&
-              (Array.isArray(selectedJob.inventory) &&
-              selectedJob.inventory.length ? (
-                <div className="eg-inventory-lines">
-                  {selectedJob.inventory.map((item: Record<string, any>) => {
-                    const key = String(item.key || item.name);
-                    return (
-                      <label key={key}>
-                        <span>{item.name}</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={quantities[key] ?? 0}
-                          onChange={event =>
-                            setQuantities(current => ({
-                              ...current,
-                              [key]: Math.max(0, Number(event.target.value)),
-                            }))
-                          }
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="eg-muted">
-                  {t(
-                    "This linked job has no canonical inventory items available for selection."
-                  )}
-                </p>
-              ))}
-            <button
-              className="eg-public-submit"
-              disabled={
-                submittingInventory ||
-                !selectedJob ||
-                !Array.isArray(selectedJob.inventory) ||
-                !selectedJob.inventory.length
-              }
-            >
-              <PackageCheck size={15} />
-              {t(
-                submittingInventory ? "Submitting…" : "Submit for staff review"
-              )}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`ws-btn${mode === "date_change" ? " primary" : ""}`}
+                onClick={() => setMode("date_change")}
+                aria-pressed={mode === "date_change"}
+              >
+                <CalendarDays size={15} /> Change date
+              </button>
+              <button
+                type="button"
+                className={`ws-btn${mode === "address" ? " primary" : ""}`}
+                onClick={() => setMode("address")}
+                aria-pressed={mode === "address"}
+              >
+                <MapPin size={15} /> Update addresses
+              </button>
+            </div>
+
+            {mode === "date_change" ? (
+              <label>
+                Preferred new date
+                <input
+                  className="ws-input"
+                  type="date"
+                  min={today()}
+                  required
+                  value={requestedDate}
+                  onChange={(event) => setRequestedDate(event.target.value)}
+                />
+              </label>
+            ) : (
+              <>
+                <label>
+                  Pickup address
+                  <input
+                    className="ws-input"
+                    maxLength={300}
+                    value={origin}
+                    onChange={(event) => setOrigin(event.target.value)}
+                    placeholder={selected.origin || "Current pickup address"}
+                  />
+                </label>
+                <label>
+                  Delivery address
+                  <input
+                    className="ws-input"
+                    maxLength={300}
+                    value={destination}
+                    onChange={(event) => setDestination(event.target.value)}
+                    placeholder={selected.destination || "Current delivery address"}
+                  />
+                </label>
+              </>
+            )}
+
+            <label>
+              Notes for the dispatch team (optional)
+              <textarea
+                className="ws-input"
+                maxLength={500}
+                rows={3}
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+              />
+            </label>
+
+            <button className="eg-public-submit" disabled={saving}>
+              <CheckCircle2 size={15} /> {saving ? "Sending…" : "Send request to dispatch"}
             </button>
           </form>
-        ) : (
-          <p className="eg-muted">
-            {t("No linked job is available for an inventory submission.")}
+
+          <h3 className="mt-4 font-semibold">Request history</h3>
+          {selected.requests.length ? (
+            <ul className="eg-storage-list">
+              {selected.requests.map((request) => (
+                <li key={request.id}>
+                  {request.kind === "date_change" ? (
+                    <CalendarDays size={15} />
+                  ) : (
+                    <MapPin size={15} />
+                  )}
+                  <span>
+                    {request.kind === "date_change"
+                      ? `New date: ${request.requestedDate ?? "—"}`
+                      : [request.origin, request.destination].filter(Boolean).join(" → ")}
+                    {request.notes ? ` · ${request.notes}` : ""}
+                  </span>
+                  <small>
+                    {request.status} · {new Date(request.at).toLocaleDateString()}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="eg-muted">No change requests yet.</p>
+          )}
+        </section>
+      )}
+
+      {selected && (
+        <section className="eg-portal-section">
+          <h2>Report damage or a missing item</h2>
+          <p>
+            Tell us what happened and the office will review it. A submitted claim does not promise
+            a refund or payout.
           </p>
-        )}
+          <form className="eg-public-card eg-inventory-form" onSubmit={submitClaim}>
+            <label>
+              What are you reporting?
+              <select
+                value={claimType}
+                onChange={(event) =>
+                  setClaimType(event.target.value as "damage" | "missing" | "other")
+                }
+              >
+                <option value="damage">Damaged item</option>
+                <option value="missing">Missing item</option>
+                <option value="other">Something else</option>
+              </select>
+            </label>
+            <label>
+              Describe the item and what happened
+              <textarea
+                className="ws-input"
+                required
+                minLength={5}
+                maxLength={2000}
+                rows={4}
+                value={claimDescription}
+                onChange={(event) => setClaimDescription(event.target.value)}
+              />
+            </label>
+            <label>
+              Estimated value (USD, optional)
+              <input
+                className="ws-input"
+                inputMode="decimal"
+                value={claimAmount}
+                onChange={(event) => setClaimAmount(event.target.value)}
+              />
+            </label>
+            <button
+              className="eg-public-submit"
+              disabled={claimSaving || claimDescription.trim().length < 5}
+            >
+              <CircleAlert size={15} /> {claimSaving ? "Submitting…" : "Submit claim for review"}
+            </button>
+          </form>
+          {data.claims.filter((claim) => claim.jobId === selected.id).length > 0 && (
+            <ul className="eg-storage-list">
+              {data.claims
+                .filter((claim) => claim.jobId === selected.id)
+                .map((claim) => (
+                  <li key={claim.id}>
+                    <CircleAlert size={15} />
+                    <span>
+                      {claim.type} · {claim.description}
+                      {claim.approvedCents > 0 ? ` · approved ${money(claim.approvedCents)}` : ""}
+                    </span>
+                    <small>{claim.status.replace(/_/g, " ")}</small>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {selected && (
+        <section className="eg-portal-section">
+          <h2>Inventory photos</h2>
+          <p>
+            Add up to 12 photos of furniture, boxes or access details. Photos are attached to this
+            move for the crew and estimator.
+          </p>
+          <label className="eg-public-card eg-inventory-form">
+            <span>
+              <Camera size={15} /> Add photos ({photos.length}/12)
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              disabled={uploading || photos.length >= 12}
+              onChange={(event) => {
+                void upload(event.target.files);
+                event.target.value = "";
+              }}
+            />
+            <small>
+              {uploading ? "Uploading…" : "JPEG, PNG or WebP. Photos are resized before upload."}
+            </small>
+          </label>
+          {photos.length > 0 && (
+            <div className="eg-portal-grid">
+              {photos.map((photo) => (
+                <figure className="eg-public-card" key={photo.id}>
+                  <img
+                    src={photoUrl(photo.id)}
+                    alt={photo.name}
+                    style={{ width: "100%", borderRadius: 8, maxHeight: 180, objectFit: "cover" }}
+                  />
+                  <figcaption>
+                    {photo.name}
+                    <small> · {new Date(photo.at).toLocaleDateString()}</small>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="eg-portal-section">
+        <h2>Invoices and documents</h2>
+        <div className="eg-portal-grid">
+          {data.invoices.map((invoice) => (
+            <article className="eg-public-card" key={invoice.id}>
+              <b>{invoice.invoiceNumber}</b>
+              <p>
+                Balance: <strong>{money(invoice.balanceCents)}</strong>
+              </p>
+              <p>Total: {money(invoice.amountCents)}</p>
+              <span className="eg-raw-status">{invoice.status}</span>
+            </article>
+          ))}
+        </div>
+        <div className="eg-document-list">
+          {data.documents.map((document) => (
+            <a key={document.id} href={document.url}>
+              {document.kind === "invoice" ? <FileText size={15} /> : <Download size={15} />}
+              Download {document.name.toLowerCase()} (PDF)
+            </a>
+          ))}
+          {!data.documents.length && (
+            <p className="eg-muted">No estimate or invoice is available to download yet.</p>
+          )}
+        </div>
       </section>
-    </PortalFrame>
+
+      <section className="eg-portal-section">
+        <h2>Need help?</h2>
+        <p>
+          Contact {data.company.name}
+          {data.company.phone ? ` at ${data.company.phone}` : ""}
+          {data.company.email ? ` or ${data.company.email}` : ""}. This link is private to your
+          move; do not forward it.
+        </p>
+      </section>
+    </Frame>
   );
 }
 
-function PortalFrame({
-  children,
-  company,
-}: {
-  children: React.ReactNode;
-  company?: string;
-}) {
-  const { t } = useI18n();
+function Frame({ children, company }: { children: React.ReactNode; company?: string }) {
   return (
     <main className="eg-public-page">
       <header className="eg-public-header">
         <Brand light />
-        <span>{company || t("Customer portal")}</span>
+        <span>{company || "Customer portal"}</span>
         <LanguageSwitcher />
       </header>
       <div className="eg-public-body eg-portal-body">{children}</div>
     </main>
   );
-}
-function PublicError({ message }: { message: string }) {
-  const { t } = useI18n();
-  return (
-    <section className="eg-public-card eg-public-error">
-      <CircleAlert size={30} />
-      <h1>{t("Portal unavailable")}</h1>
-      <p>{t(message)}</p>
-    </section>
-  );
-}
-const moneyCents = (value: number) =>
-  new Intl.NumberFormat(
-    document.documentElement.lang === "ru" ? "ru-RU" : "en-US",
-    { style: "currency", currency: "USD" }
-  ).format(value / 100);
-function publicError(reason: unknown, fallback: string) {
-  return reason instanceof CrmApiError && reason.status === 404
-    ? fallback
-    : reason instanceof Error
-      ? reason.message
-      : fallback;
 }

@@ -21,6 +21,12 @@ import {
   type QuotePayment,
 } from "../shared/quote-accept";
 import { calculateQuote, type Job } from "../shared/crm";
+import {
+  packingLines,
+  packingSubtotal,
+  parsePackingSelection,
+  type PackingSelection,
+} from "../shared/packing";
 import { QUOTE_TOKEN_RE } from "../shared/quote-dispatch";
 import { jobReference } from "../shared/tracking";
 import { deliverEmail, deliverSms } from "./quote-dispatch";
@@ -92,8 +98,10 @@ async function savePatch(db: SupabaseClient, row: Row, patch: Record<string, unk
   row.data = next;
 }
 
-/** Stored estimate total, or the same calculation the quote portal displays. */
-function quoteTotal(data: Record<string, unknown>): number {
+const roundMoney = (value: number) => Math.round(value * 100) / 100;
+
+/** Base estimate: the stored office total, or the same calculation the portal displays. */
+function quoteBaseTotal(data: Record<string, unknown>): number {
   const stored = dollars(data["total"]);
   if (stored > 0) return stored;
   try {
@@ -101,6 +109,16 @@ function quoteTotal(data: Record<string, unknown>): number {
   } catch {
     return 0;
   }
+}
+
+/**
+ * Customer total shown on the quote and used for the deposit: base estimate plus the packing
+ * catalog price of the saved selection. The selection is repriced here, never taken as an
+ * amount from the request.
+ */
+function quoteTotal(data: Record<string, unknown>): number {
+  const packing = parsePackingSelection(data["packingSelection"]);
+  return roundMoney(quoteBaseTotal(data) + packingSubtotal(packing) / 100);
 }
 
 async function depositFor(db: SupabaseClient, row: Row) {
@@ -143,6 +161,47 @@ export async function quotePortalOptions(token: string, host: string): Promise<Q
     acceptedAt: acceptance?.signedAt ?? null,
     paymentMode: acceptance?.payment.mode ?? null,
     payments: quotePaymentsAvailability(host),
+  };
+}
+
+export type QuotePackingResult = {
+  selection: PackingSelection;
+  subtotalCents: number;
+  total: number;
+  depositCents: number;
+  lines: { id: string; label: string; quantity: number; amountCents: number }[];
+};
+
+/** Saves the customer's packing selection, then returns the repriced total and deposit. */
+export async function saveQuotePacking(
+  token: string,
+  value: unknown,
+): Promise<QuotePackingResult> {
+  const { db, row } = await loadByToken(token);
+  if (quoteAcceptance(row.data["quoteAcceptance"]))
+    throw new QuotePortalError("This quote has already been accepted", 409);
+  const status = text(row.data["status"]).toLowerCase();
+  if (["cancelled", "canceled", "declined", "lost", "archived"].includes(status))
+    throw new QuotePortalError("This quote is no longer available", 409);
+  const selection = parsePackingSelection(value);
+  const subtotalCents = packingSubtotal(selection);
+  await savePatch(db, row, {
+    packingSelection: selection,
+    packingSubtotalCents: subtotalCents,
+    packingUpdatedAt: new Date().toISOString(),
+  });
+  const deposit = await depositFor(db, row);
+  return {
+    selection,
+    subtotalCents,
+    total: deposit.total,
+    depositCents: deposit.cents,
+    lines: packingLines(selection).map((line) => ({
+      id: line.id,
+      label: line.label,
+      quantity: line.quantity,
+      amountCents: line.amountCents,
+    })),
   };
 }
 

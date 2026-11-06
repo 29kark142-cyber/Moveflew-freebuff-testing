@@ -106,6 +106,18 @@ export type Job = {
   } | null;
   /** Vault assets and inspection photos mirrored from linked storage vaults. */
   vaultGallery?: JobVaultRecord[];
+  /** Packing supplies and add-on services the customer selected on the public quote. */
+  packingSelection?: { materials: Record<string, number>; services: string[] };
+  /** Catalog price of the packing selection in cents, recomputed server-side. */
+  packingSubtotalCents?: number;
+  packingUpdatedAt?: string | null;
+  /** QR box scans recorded by the crew at pickup and delivery. */
+  inventoryScans?: import("./inventory-scan").InventoryScan[];
+  /** Customer portal date/address requests awaiting office review. */
+  portalRequests?: import("./portal").PortalRequest[];
+  /** Inventory photos uploaded by the customer through their portal link. */
+  customerPhotos?: import("./portal").PortalPhoto[];
+  portalLastRequestAt?: string | null;
   invoiceStatus: string;
   actualHours: number | null;
   finalTotal: number | null;

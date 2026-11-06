@@ -57,8 +57,9 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
 export function finalBill(job: Record<string, unknown>, hours: number): FinalBill {
   const labor = r2(hours * num(job["hourlyRate"]));
   const travel = r2(num(job["travelFee"]));
+  const packing = r2(num(job["packingSubtotalCents"]) / 100);
   const fees = r2(
-    (Array.isArray(job["fees"]) ? (job["fees"] as { amount?: unknown }[]) : []).reduce((s, f) => s + num(f?.amount), 0),
+    (Array.isArray(job["fees"]) ? (job["fees"] as { amount?: unknown }[]) : []).reduce((s, f) => s + num(f?.amount), 0) + packing,
   );
   const tip = r2(num(job["tipCents"]) / 100);
   const deposit = r2(num(job["depositPaidCents"]) / 100);

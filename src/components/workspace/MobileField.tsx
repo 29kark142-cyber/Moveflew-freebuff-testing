@@ -32,10 +32,42 @@ type FieldJob = Record<string, unknown> & {
   reviewUrl?: string | null;
   moveChecklist?: unknown;
   activity?: unknown;
+  driverCheckins?: Array<{ id: string; label: string; at: string; note?: string; crewName?: string }>;
+  driverLocation?: { label: string; at: string; crewName: string } | null;
 };
 type Me = { id: number; name: string; crewRole: string } | null;
 type Photo = DamagePhoto;
 const OFFICE = ["admin", "office_admin", "dispatcher"];
+const CHECKINS = [
+  { key: "en_route_origin", label: "En Route" },
+  { key: "arrived_pickup", label: "Arrived at Pickup" },
+  { key: "in_transit_destination", label: "In Transit" },
+  { key: "arrived_unload", label: "Arrived at Unload" },
+] as const;
+
+/** Device GPS with clear, phone-friendly failures instead of a silent no-op. */
+const locateDevice = () =>
+  new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!("geolocation" in navigator)) {
+      reject(new Error("This device cannot share a GPS location."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      (error) => {
+        reject(
+          new Error(
+            error.code === error.PERMISSION_DENIED
+              ? "Allow location access to send a check-in."
+              : error.code === error.TIMEOUT
+                ? "GPS timed out. Move somewhere with a clearer signal and retry."
+                : "Could not read your GPS location.",
+          ),
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 20_000 },
+    );
+  });
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -208,6 +240,8 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
   const [sig, setSig] = useState<string | null>(null);
   const [pay, setPay] = useState<{ url: string; qr: string; env: string } | null>(null);
   const [pdf,setPdf]=useState<{ready?:boolean;emailStatus:string}|null>(job.fieldPdf || null);
+  const [checkinNote,setCheckinNote]=useState("");
+  const [locating,setLocating]=useState(false);
   const t = job.timeline ?? {};
   const canStage = OFFICE.includes(role) || ["crew_lead", "driver"].includes(me?.crewRole ?? "");
   const done = Boolean(t.complete);
@@ -260,6 +294,27 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
     catch(e){if(!isOffline(e))throw e;await queue(job.id,'signoff',body);onChange({...job,completedSignature:sig});toast('Signature saved on this device; PDF will be generated after sync');}
   });
 
+  // Milestone check-ins store the phone's GPS fix on the job; the customer tracker reads it.
+  const checkin = (milestone: string, label: string) => run(async () => {
+    setLocating(true);
+    try {
+      const position = await locateDevice();
+      const saved = await post<FieldJob>(`/field/jobs/${job.id}/checkin`, {
+        milestone,
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
+        note: checkinNote,
+        operationId: crypto.randomUUID(),
+      });
+      onChange(saved);
+      setCheckinNote("");
+      toast.success(`${label} check-in sent`);
+    } finally {
+      setLocating(false);
+    }
+  });
+
   const startCard = () => run(async () => {
     const r = await post<{ url: string; env: string }>(`/field/jobs/${job.id}/checkout`);
     setPay({ ...r, qr: await QRCode.toDataURL(r.url, { margin: 1, width: 260 }) });
@@ -295,6 +350,55 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
           </button>
         ) : <p className="text-sm text-muted-foreground">Your crew lead or driver updates the job stage.</p>)}
         {done && <p className="text-sm text-foreground">Billable time: <strong>{job.bill.hours} h</strong> (pickup arrival to completion)</p>}
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-semibold text-card-foreground">Driver check-in</h2>
+          <span className="text-xs text-muted-foreground">
+            {job.driverCheckins?.[0]?.at ? timeOf(job.driverCheckins[0].at) : "Not checked in"}
+          </span>
+        </div>
+        {job.driverCheckins?.[0] ? (
+          <p className="rounded-xl bg-muted p-3 text-sm text-foreground">
+            <strong>{job.driverCheckins[0].label}</strong>
+            {job.driverCheckins[0].note ? ` · ${job.driverCheckins[0].note}` : ""}
+            <span className="ml-1 text-muted-foreground">· {job.driverCheckins[0].crewName}</span>
+          </p>
+        ) : job.driverLocation ? (
+          <p className="rounded-xl bg-muted p-3 text-sm text-foreground">
+            <strong>{job.driverLocation.label}</strong> · {job.driverLocation.crewName}
+          </p>
+        ) : null}
+        {canStage ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              {CHECKINS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  disabled={busy || locating}
+                  onClick={() => void checkin(option.key, option.label)}
+                  className="min-h-12 rounded-xl border border-border bg-background px-2 text-sm font-medium text-foreground active:scale-95 disabled:opacity-50"
+                >
+                  {locating ? "Getting GPS…" : option.label}
+                </button>
+              ))}
+            </div>
+            <input
+              value={checkinNote}
+              onChange={(event) => setCheckinNote(event.target.value.slice(0, 280))}
+              placeholder="Note for the office (optional)"
+              aria-label="Check-in note"
+              className="h-11 w-full rounded-xl border border-input bg-background px-3 text-base text-foreground"
+            />
+            <p className="text-xs text-muted-foreground">
+              Sends this phone&apos;s GPS fix and the milestone to the office and customer tracker.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Your crew lead or driver records milestones.</p>
+        )}
       </section>
 
       <FieldDocuments documents={{...job.fieldDocuments,...(job.completedSignature && !job.fieldDocuments?.bol?.signature?{bol:{kind:'bol' as const,notes:job.fieldDocuments?.bol?.notes || '',items:job.fieldDocuments?.bol?.items || [],signature:job.completedSignature,signedAt:String(job['signedOffAt'] || '')}}:{})}} job={job} scope={scope} locked={Boolean(job.completedSignature)} onSave={saveDocument}/>

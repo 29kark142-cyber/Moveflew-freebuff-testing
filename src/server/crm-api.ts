@@ -77,6 +77,7 @@ const KINDS: Record<string, string> = {
   reminders: "reminder",
   sequences: "sequence",
   vaults: "vault",
+  expenses: "expense",
 };
 
 const DEFAULTS: Record<string, Record<string, unknown>> = {
@@ -135,6 +136,14 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     skillLevel: 1,
     hourlyRate: 0,
     status: "active",
+  },
+  expense: {
+    jobId: null,
+    category: "",
+    amountCents: 0,
+    incurredDate: "",
+    vendor: "",
+    notes: "",
   },
   reminder: { customerId: null, title: "", dueAt: "", completed: false },
   sequence: {
@@ -253,6 +262,13 @@ const SERVER_FIELDS = new Set([
   "driverCheckins",
   "driverLocation",
   "vaultGallery",
+  "packingSelection",
+  "packingSubtotalCents",
+  "packingUpdatedAt",
+  "inventoryScans",
+  "portalRequests",
+  "customerPhotos",
+  "portalLastRequestAt",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -1209,6 +1225,55 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
   // Vaults hold customer belongings and contact details, so they stay with office staff.
   if (head === "vaults" && !["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
     fail(403, "Storage vaults are for office staff");
+  // Expense records feed labor, fuel and margin reporting, so crew phones cannot write them.
+  if (head === "ops" && (idRaw === "timecards" || idRaw === "tips" || idRaw === "payroll")) {
+    const ws = requireWs(ctx);
+    const id = Number(parts[2]) || 0;
+    const mod = await import("./payroll-api");
+    try {
+      if (idRaw === "timecards") {
+        if (method === "GET" && !id) return await mod.listTimecards(ctx.db, ws);
+        if (method === "POST" && !id)
+          return await mod.createTimecard(ctx.db, ws, ctx.role, await body());
+        if (method === "PATCH" && id)
+          return await mod.updateTimecard(ctx.db, ws, ctx.role, id, await body());
+      }
+      if (idRaw === "tips") {
+        if (method === "GET") return await mod.listTips(ctx.db, ws);
+        if (method === "POST")
+          return await mod.createTip(ctx.db, ws, ctx.role, await body());
+      }
+      if (idRaw === "payroll" && method === "GET")
+        return await mod.payrollReport(ctx.db, ws, ctx.q?.get("from") ?? null, ctx.q?.get("to") ?? null);
+    } catch (error) {
+      if (error instanceof mod.PayrollError) fail(error.status, error.message);
+      throw error;
+    }
+  }
+
+  if (head === "ops" && idRaw === "claims") {
+    const ws = requireWs(ctx);
+    const claimId = Number.isFinite(Number(parts[2])) ? Number(parts[2]) : 0;
+    const action = parts[3];
+    const mod = await import("./claims-api");
+    try {
+      if (method === "GET" && !claimId) return await mod.listClaims(ctx.db, ws);
+      if (method === "POST" && !claimId)
+        return await mod.createClaim(ctx.db, ws, ctx.role, ctx.email, await body());
+      if (method === "PATCH" && claimId)
+        return await mod.updateClaim(ctx.db, ws, ctx.role, ctx.email, claimId, await body());
+      if (method === "GET" && claimId && action === "events")
+        return await mod.claimEvents(ctx.db, ws, claimId);
+      if (method === "POST" && claimId && action === "events")
+        return await mod.addClaimEvent(ctx.db, ws, ctx.role, ctx.email, claimId, await body());
+    } catch (error) {
+      if (error instanceof mod.ClaimError) fail(error.status, error.message);
+      throw error;
+    }
+  }
+
+  if (head === "expenses" && !["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
+    fail(403, "Expenses are for office staff");
   // Saving a vault mirrors its inspection photos and assets onto the active job payload.
   if (head === "vaults" && id && method === "PATCH") {
     const saved = (await update(ctx, "vault", id, await body())) as Record<string, unknown>;

@@ -184,6 +184,13 @@ const NAV: NavigationItem[] = [
     roles: office,
   },
   {
+    href: "/app/inventory",
+    label: "Box scanning",
+    icon: Package,
+    group: "Moving operations",
+    roles: [...office, "crew"],
+  },
+  {
     href: "/app/field",
     label: "Field crew",
     icon: Contact,
@@ -207,6 +214,13 @@ const NAV: NavigationItem[] = [
     href: "/app/billing",
     label: "Billing & payments",
     icon: Wallet,
+    group: "Finance & service",
+    roles: finance,
+  },
+  {
+    href: "/app/finance",
+    label: "Financial analytics",
+    icon: BarChart3,
     group: "Finance & service",
     roles: finance,
   },

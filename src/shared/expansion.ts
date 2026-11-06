@@ -63,6 +63,9 @@ export type Claim = Row & {
   approvedCents: number;
   dueDate: string | null;
   resolution: string;
+  payoutCents?: number;
+  payoutExpenseId?: number | null;
+  submittedVia?: string;
 };
 export type Timecard = Row & {
   crewMemberId: number;
@@ -146,12 +149,6 @@ export const PIPELINE_STAGES = [
   "won",
   "lost",
 ] as const;
-export const CLAIM_STATUSES = [
-  "open",
-  "investigating",
-  "offered",
-  "resolved",
-  "rejected",
-] as const;
+export { CLAIM_STATUSES } from "./claims";
 export const cents = (amount: number) => Math.round(amount * 100);
 export const dollars = (amountCents: number) => amountCents / 100;

@@ -14,6 +14,7 @@ import {
   useRemote,
 } from "@/components/workspace/WorkspaceUI";
 import { ops, type PayrollReport } from "@/lib/ops-api";
+import { downloadPayStub } from "@/lib/pay-stub-pdf";
 import {
   canAccess,
   dateToday,
@@ -78,10 +79,7 @@ function PayrollContent({ role }: { role: ModuleProps["role"] }) {
   const { t } = useI18n();
   const [from, setFrom] = useState(monday());
   const to = weekEnd(from);
-  const { data, loading, error, refresh } = useRemote(
-    () => loadPayroll(from, to),
-    [from, to]
-  );
+  const { data, loading, error, refresh } = useRemote(() => loadPayroll(from, to), [from, to]);
   const [tab, setTab] = useState<Tab>("timecards");
   const [edit, setEdit] = useState<Timecard | null | undefined>();
   const [newTip, setNewTip] = useState(false);
@@ -141,24 +139,12 @@ function PayrollContent({ role }: { role: ModuleProps["role"] }) {
         />
       )}{" "}
       {tab === "payroll" && (
-        <PayrollReview
-          report={data.report}
-          from={from}
-          to={to}
-          onFrom={setFrom}
-        />
+        <PayrollReview report={data.report} from={from} to={to} onFrom={setFrom} />
       )}{" "}
       {tab === "tips" && (
-        <TipsTab
-          tips={data.tips}
-          jobs={data.jobs}
-          crew={data.crew}
-          onNew={() => setNewTip(true)}
-        />
+        <TipsTab tips={data.tips} jobs={data.jobs} crew={data.crew} onNew={() => setNewTip(true)} />
       )}{" "}
-      {tab === "payouts" && (
-        <RecordZellePayout crew={data.crew} onRecorded={saved} />
-      )}{" "}
+      {tab === "payouts" && <RecordZellePayout crew={data.crew} onRecorded={saved} />}{" "}
       {edit !== undefined && (
         <TimecardForm
           row={edit}
@@ -224,15 +210,11 @@ function Timecards({
               </tr>
             </thead>
             <tbody>
-              {rows.map(row => (
+              {rows.map((row) => (
                 <tr key={row.id}>
                   <td className="ws-table-main">
                     {row.crewName}
-                    <small>
-                      {row.jobId
-                        ? `${t("Job")} #${row.jobId}`
-                        : t("Not job-linked")}
-                    </small>
+                    <small>{row.jobId ? `${t("Job")} #${row.jobId}` : t("Not job-linked")}</small>
                   </td>
                   <td>{shortDate(row.workDate)}</td>
                   <td>{row.minutes}</td>
@@ -242,13 +224,9 @@ function Timecards({
                     <small>{t("per hour")}</small>
                   </td>
                   <td>
-                    <StatusChip
-                      status={row.approved ? "approved" : "pending"}
-                    />
+                    <StatusChip status={row.approved ? "approved" : "pending"} />
                     {row.paidMethod === "zelle" && (
-                      <small className="worker-paid-badge">
-                        {t("Paid via Zelle")}
-                      </small>
+                      <small className="worker-paid-badge">{t("Paid via Zelle")}</small>
                     )}
                   </td>
                   <td>
@@ -267,10 +245,7 @@ function Timecards({
           </table>
         </div>
       ) : (
-        <EmptyRows
-          title="No timecards"
-          detail="Add actual crew work time for review."
-        />
+        <EmptyRows title="No timecards" detail="Add actual crew work time for review." />
       )}
     </section>
   );
@@ -299,7 +274,7 @@ function PayrollReview({
         t("Tips (USD)"),
         t("Total (USD)"),
       ],
-      ...report.rows.map(row => [
+      ...report.rows.map((row) => [
         row.name,
         row.regularMinutes,
         row.overtimeMinutes,
@@ -335,7 +310,7 @@ function PayrollReview({
             className="ws-input"
             type="date"
             value={from}
-            onChange={e => onFrom(e.target.value)}
+            onChange={(e) => onFrom(e.target.value)}
           />
         </label>
         <span className="ops-meta">
@@ -371,10 +346,11 @@ function PayrollReview({
                 <th>{t("Overtime pay")}</th>
                 <th>{t("Tips")}</th>
                 <th>{t("Total")}</th>
+                <th>{t("Stub")}</th>
               </tr>
             </thead>
             <tbody>
-              {report.rows.map(row => (
+              {report.rows.map((row) => (
                 <tr key={row.crewMemberId}>
                   <td className="ws-table-main">{row.name}</td>
                   <td>
@@ -390,6 +366,14 @@ function PayrollReview({
                   <td className="ops-money">
                     <b>{money(row.totalCents)}</b>
                   </td>
+                  <td className="ops-no-print">
+                    <button
+                      className="ws-btn"
+                      onClick={() => void downloadPayStub(row, { from, to })}
+                    >
+                      <Download size={14} /> PDF
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -404,7 +388,7 @@ function PayrollReview({
       <p className="ops-legal-note">
         {report.disclaimer ||
           t(
-            "Review totals only; no tax withholding, disbursement, or employment classification determination is made here."
+            "Review totals only; no tax withholding, disbursement, or employment classification determination is made here.",
           )}
       </p>
     </section>
@@ -422,8 +406,7 @@ function TipsTab({
   onNew: () => void;
 }) {
   const { t } = useI18n();
-  const crewName = (id: number) =>
-    crew.find(row => row.id === id)?.name || `#${id}`;
+  const crewName = (id: number) => crew.find((row) => row.id === id)?.name || `#${id}`;
   return (
     <section className="ws-card ws-card-pad">
       <SectionTitle
@@ -432,7 +415,7 @@ function TipsTab({
         action={
           <button
             className="ws-btn primary"
-            disabled={!jobs.some(job => job.crewIds.length)}
+            disabled={!jobs.some((job) => job.crewIds.length)}
             onClick={onNew}
           >
             <Plus size={15} />
@@ -442,7 +425,7 @@ function TipsTab({
       />
       <p className="ops-legal-note">
         {t(
-          "This is record-only manual tip allocation. A digital tip invoice is allocated only after independently verified payment."
+          "This is record-only manual tip allocation. A digital tip invoice is allocated only after independently verified payment.",
         )}
       </p>
       {tips.length ? (
@@ -457,13 +440,13 @@ function TipsTab({
               </tr>
             </thead>
             <tbody>
-              {tips.map(tip => (
+              {tips.map((tip) => (
                 <tr key={tip.id}>
                   <td>
                     {jobLabel(
-                      jobs.find(job => job.id === tip.jobId) || {
+                      jobs.find((job) => job.id === tip.jobId) || {
                         id: tip.jobId,
-                      }
+                      },
                     )}
                   </td>
                   <td>{tip.method}</td>
@@ -471,8 +454,8 @@ function TipsTab({
                   <td>
                     {tip.allocations
                       .map(
-                        row =>
-                          `${crewName(row.crewMemberId)}: ${money(row.amountCents)}${row.paidMethod === "zelle" ? ` · ${t("Paid via Zelle")}` : ""}`
+                        (row) =>
+                          `${crewName(row.crewMemberId)}: ${money(row.amountCents)}${row.paidMethod === "zelle" ? ` · ${t("Paid via Zelle")}` : ""}`,
                       )
                       .join(" · ")}
                   </td>
@@ -506,17 +489,13 @@ function TimecardForm({
   onSaved: (message: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [crewMemberId, setCrewMemberId] = useState(
-    String(row?.crewMemberId || crew[0]?.id || "")
-  );
+  const [crewMemberId, setCrewMemberId] = useState(String(row?.crewMemberId || crew[0]?.id || ""));
   const [jobId, setJobId] = useState(row?.jobId ? String(row.jobId) : "");
   const [workDate, setWorkDate] = useState(row?.workDate || dateToday());
   const [minutes, setMinutes] = useState(String(row?.minutes || ""));
-  const [breakMinutes, setBreakMinutes] = useState(
-    String(row?.breakMinutes || 0)
-  );
+  const [breakMinutes, setBreakMinutes] = useState(String(row?.breakMinutes || 0));
   const [rate, setRate] = useState(
-    row ? (row.rateCents / 100).toFixed(2) : String(crew[0]?.hourlyRate || "")
+    row ? (row.rateCents / 100).toFixed(2) : String(crew[0]?.hourlyRate || ""),
   );
   const [notes, setNotes] = useState(row?.notes || "");
   const [approved, setApproved] = useState(row?.approved || false);
@@ -536,9 +515,7 @@ function TimecardForm({
       !Number.isInteger(breaks) ||
       breaks < 0
     )
-      return setError(
-        t("Use whole non-negative minutes and a valid hourly dollar rate.")
-      );
+      return setError(t("Use whole non-negative minutes and a valid hourly dollar rate."));
     setSaving(true);
     setError("");
     try {
@@ -552,25 +529,17 @@ function TimecardForm({
         notes,
         approved: admin ? approved : false,
       };
-      row
-        ? await ops.updateTimecard(row.id, value)
-        : await ops.createTimecard(value);
+      row ? await ops.updateTimecard(row.id, value) : await ops.createTimecard(value);
       await onSaved(row ? "Timecard updated." : "Timecard saved.");
       onClose();
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : t("Could not save timecard.")
-      );
+      setError(reason instanceof Error ? reason.message : t("Could not save timecard."));
     } finally {
       setSaving(false);
     }
   };
   return (
-    <Modal
-      title={row ? "Edit timecard" : "Add timecard"}
-      onClose={onClose}
-      wide
-    >
+    <Modal title={row ? "Edit timecard" : "Add timecard"} onClose={onClose} wide>
       <form className="ws-modal__body ops-form" onSubmit={submit}>
         <div className="ws-form-grid">
           <label className="ws-field">
@@ -578,9 +547,9 @@ function TimecardForm({
             <select
               className="ws-select"
               value={crewMemberId}
-              onChange={e => setCrewMemberId(e.target.value)}
+              onChange={(e) => setCrewMemberId(e.target.value)}
             >
-              {crew.map(member => (
+              {crew.map((member) => (
                 <option key={member.id} value={member.id}>
                   {member.name}
                 </option>
@@ -589,13 +558,9 @@ function TimecardForm({
           </label>
           <label className="ws-field">
             <span>{t("Related job")}</span>
-            <select
-              className="ws-select"
-              value={jobId}
-              onChange={e => setJobId(e.target.value)}
-            >
+            <select className="ws-select" value={jobId} onChange={(e) => setJobId(e.target.value)}>
               <option value="">{t("No related job")}</option>
-              {jobs.map(job => (
+              {jobs.map((job) => (
                 <option key={job.id} value={job.id}>
                   {jobLabel(job)}
                 </option>
@@ -609,7 +574,7 @@ function TimecardForm({
               type="date"
               required
               value={workDate}
-              onChange={e => setWorkDate(e.target.value)}
+              onChange={(e) => setWorkDate(e.target.value)}
             />
           </label>
           <label className="ws-field">
@@ -620,7 +585,7 @@ function TimecardForm({
               min="0"
               required
               value={minutes}
-              onChange={e => setMinutes(e.target.value)}
+              onChange={(e) => setMinutes(e.target.value)}
             />
           </label>
           <label className="ws-field">
@@ -631,7 +596,7 @@ function TimecardForm({
               min="0"
               required
               value={breakMinutes}
-              onChange={e => setBreakMinutes(e.target.value)}
+              onChange={(e) => setBreakMinutes(e.target.value)}
             />
           </label>
           <label className="ws-field">
@@ -641,7 +606,7 @@ function TimecardForm({
               inputMode="decimal"
               required
               value={rate}
-              onChange={e => setRate(e.target.value)}
+              onChange={(e) => setRate(e.target.value)}
             />
           </label>
         </div>
@@ -650,7 +615,7 @@ function TimecardForm({
           <textarea
             className="ws-textarea"
             value={notes}
-            onChange={e => setNotes(e.target.value)}
+            onChange={(e) => setNotes(e.target.value)}
           />
         </label>
         {admin ? (
@@ -658,14 +623,14 @@ function TimecardForm({
             <input
               type="checkbox"
               checked={approved}
-              onChange={e => setApproved(e.target.checked)}
+              onChange={(e) => setApproved(e.target.checked)}
             />
             <span>{t("Admin approval")}</span>
           </label>
         ) : (
           <p className="ops-meta">
             {t(
-              "Only an Admin can set the approval checkbox. This timecard will remain unapproved."
+              "Only an Admin can set the approval checkbox. This timecard will remain unapproved.",
             )}
           </p>
         )}
@@ -694,32 +659,29 @@ function TipForm({
   onSaved: (message: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const validJobs = jobs.filter(job => job.crewIds.length);
+  const validJobs = jobs.filter((job) => job.crewIds.length);
   const [jobId, setJobId] = useState(String(validJobs[0]?.id || ""));
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("");
   const [allocations, setAllocations] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const job = jobs.find(item => item.id === Number(jobId));
-  const assigned = crew.filter(member => job?.crewIds.includes(member.id));
+  const job = jobs.find((item) => item.id === Number(jobId));
+  const assigned = crew.filter((member) => job?.crewIds.includes(member.id));
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountCents = dollarsToCents(amount);
-    const rows = assigned.map(member => ({
+    const rows = assigned.map((member) => ({
       crewMemberId: member.id,
       amountCents: dollarsToCents(allocations[member.id] || ""),
     }));
     if (amountCents === null || amountCents <= 0 || !method.trim())
       return setError(t("Enter a positive amount and payment method."));
     if (
-      rows.some(row => row.amountCents === null || row.amountCents < 0) ||
-      rows.reduce((sum, row) => sum + Number(row.amountCents), 0) !==
-        amountCents
+      rows.some((row) => row.amountCents === null || row.amountCents < 0) ||
+      rows.reduce((sum, row) => sum + Number(row.amountCents), 0) !== amountCents
     )
-      return setError(
-        t("Assigned crew allocations must equal the tip amount exactly.")
-      );
+      return setError(t("Assigned crew allocations must equal the tip amount exactly."));
     setSaving(true);
     setError("");
     try {
@@ -735,11 +697,7 @@ function TipForm({
       await onSaved("Tip allocation saved.");
       onClose();
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : t("Could not save tip allocation.")
-      );
+      setError(reason instanceof Error ? reason.message : t("Could not save tip allocation."));
     } finally {
       setSaving(false);
     }
@@ -752,12 +710,12 @@ function TipForm({
           <select
             className="ws-select"
             value={jobId}
-            onChange={e => {
+            onChange={(e) => {
               setJobId(e.target.value);
               setAllocations({});
             }}
           >
-            {validJobs.map(item => (
+            {validJobs.map((item) => (
               <option key={item.id} value={item.id}>
                 {jobLabel(item)}
               </option>
@@ -772,7 +730,7 @@ function TipForm({
               inputMode="decimal"
               required
               value={amount}
-              onChange={e => setAmount(e.target.value)}
+              onChange={(e) => setAmount(e.target.value)}
             />
           </label>
           <label className="ws-field">
@@ -781,13 +739,13 @@ function TipForm({
               className="ws-input"
               required
               value={method}
-              onChange={e => setMethod(e.target.value)}
+              onChange={(e) => setMethod(e.target.value)}
             />
           </label>
         </div>
         <div>
           <b>{t("Assigned crew allocation")}</b>
-          {assigned.map(member => (
+          {assigned.map((member) => (
             <label className="ws-field" key={member.id}>
               <span>{member.name}</span>
               <input
@@ -795,7 +753,7 @@ function TipForm({
                 inputMode="decimal"
                 placeholder={t("USD amount")}
                 value={allocations[member.id] || ""}
-                onChange={e =>
+                onChange={(e) =>
                   setAllocations({
                     ...allocations,
                     [member.id]: e.target.value,

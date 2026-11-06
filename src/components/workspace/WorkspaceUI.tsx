@@ -99,7 +99,7 @@ export function StatusChip({ status }: { status?: string | null }) {
   const { t } = useI18n();
   const value = (status || "not scheduled").replace(/_/g, " ");
   const normalized = value.toLowerCase();
-  const tone = /complete|paid|active|won|confirmed/.test(normalized)
+  const tone = /complete|paid|payout|active|won|confirmed/.test(normalized)
     ? "green"
     : /cancel|overdue|failed/.test(normalized)
       ? "red"

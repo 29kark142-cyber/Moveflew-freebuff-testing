@@ -15,7 +15,13 @@ export type JobActivityKind =
   | "pre_move_2h_reminder"
   | "replacement_assigned"
   | "driver_checkin"
-  | "vault_photos_synced";
+  | "vault_photos_synced"
+  | "inventory_scanned"
+  | "customer_request"
+  | "customer_photo"
+  | "claim_opened"
+  | "claim_submitted"
+  | "claim_payout";
 
 export type JobActivityEvent = {
   /** Stable id, so an offline replay of the same operation never duplicates an event. */

@@ -255,6 +255,54 @@ export async function fieldRoute(ctx: Ctx, method: string, parts: string[], body
     );
   }
 
+  // QR box scans at pickup and delivery, stored on the job for reconciliation.
+  if (sub === "scans" && method === "POST") {
+    const input = z
+      .object({
+        code: z.string().trim().min(3).max(40),
+        phase: z.enum(["origin", "destination"]),
+        operationId: z.string().trim().max(80).optional(),
+        note: z.string().trim().max(200).optional(),
+      })
+      .parse(await body());
+    const { inventoryLabels, inventoryScans, withInventoryScan } = await import(
+      "../shared/inventory-scan"
+    );
+    const labels = inventoryLabels(job as unknown as { id: number; inventory?: unknown });
+    const match = labels.find((label) => label.code === input.code.toUpperCase());
+    if (!match) h.fail(400, "This label is not part of this job's inventory");
+    const existing = inventoryScans(job["inventoryScans"]);
+    const already = existing.some(
+      (scan) => scan.code === match.code && scan.phase === input.phase,
+    );
+    const self = await me(ctx, h);
+    const by = String(self?.["name"] ?? ctx.email ?? "Crew");
+    const at = new Date().toISOString();
+    const scans = withInventoryScan(existing, {
+      code: match.code,
+      phase: input.phase,
+      at,
+      by,
+      ...(input.operationId ? { operationId: input.operationId } : {}),
+      ...(input.note ? { note: input.note } : {}),
+    });
+    const patch: Record<string, unknown> = { inventoryScans: scans };
+    if (!already) {
+      const { appendJobActivity } = await import("../shared/job-activity");
+      patch["activity"] = appendJobActivity(job["activity"], [
+        {
+          id: `box:${match.code}:${input.phase}`,
+          kind: "inventory_scanned",
+          title: input.phase === "origin" ? "Box Loaded on Truck" : "Box Unloaded at Destination",
+          detail: `${match.name} · ${match.code}`,
+          at,
+          by,
+        },
+      ]);
+    }
+    return view(await h.saveData(ctx, id, patch));
+  }
+
   // Crew lead milestone updates with device GPS, mirrored into the customer tracker.
   if (sub === "checkin" && method === "POST") {
     const self = await me(ctx, h);

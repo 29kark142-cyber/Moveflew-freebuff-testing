@@ -17,6 +17,12 @@ import { paymentsConfigured } from "@/lib/stripe";
 import { Button } from "@/components/ui/button";
 import { money } from "@shared/crm";
 import { QUOTE_TERMS_HREF, QUOTE_TERMS_LABEL } from "@shared/quote-accept";
+import {
+  PACKING_MATERIALS,
+  PACKING_SERVICES,
+  parsePackingSelection,
+  type PackingSelection,
+} from "@shared/packing";
 import "@/workspace.css";
 
 const hourLabel = (value = 8) => {
@@ -62,13 +68,18 @@ export default function QuotePage({ token }: { token?: string }) {
   const [busy, setBusy] = useState(false);
   const [intent, setIntent] = useState<{ clientSecret: string; amountCents: number } | null>(null);
   const [result, setResult] = useState<AcceptResult | null>(null);
+  const [packing, setPacking] = useState<PackingSelection>({ materials: {}, services: [] });
+  const [packingBusy, setPackingBusy] = useState(false);
+  const [packingError, setPackingError] = useState("");
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError("");
       try {
-        setQuote(await readQuote({ data: { token: token ?? "" } }));
+        const next = await readQuote({ data: { token: token ?? "" } });
+        setQuote(next);
+        setPacking(next.packing);
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "This quote could not be found.");
       } finally {
@@ -87,6 +98,7 @@ export default function QuotePage({ token }: { token?: string }) {
   const ready = Boolean(signature) && terms;
 
   const accept = async (payment: { paymentIntentId?: string; paymentMode?: "test" }) => {
+    if (packingBusy) return setError("Wait for the packing selection to finish saving.");
     if (!signature) return setError("Please sign in the box before confirming your booking.");
     if (!terms) return setError("Please accept the terms of service and cancellation policy.");
     setBusy(true);
@@ -107,7 +119,56 @@ export default function QuotePage({ token }: { token?: string }) {
     }
   };
 
+  const savePacking = async (next: PackingSelection) => {
+    const previous = packing;
+    setPacking(next);
+    setPackingBusy(true);
+    setPackingError("");
+    try {
+      const data = await postJson(`/api/quote/${resolvedToken}/packing`, { selection: next });
+      setQuote((current) => {
+        if (!current) return current;
+        const lines = Array.isArray(data["lines"])
+          ? (data["lines"] as { label?: unknown; amountCents?: unknown }[]).map((line) => ({
+              label: String(line.label ?? ""),
+              amount: (Number(line.amountCents) || 0) / 100,
+            }))
+          : current.packingLines;
+        return {
+          ...current,
+          packing: parsePackingSelection(data["selection"]),
+          packingSubtotal: (Number(data["subtotalCents"]) || 0) / 100,
+          packingLines: lines,
+          total: Number(data["total"]) || current.total,
+          depositCents: Number(data["depositCents"]) || 0,
+        };
+      });
+    } catch (reason) {
+      setPacking(previous);
+      setPackingError(
+        reason instanceof Error ? reason.message : "Could not update the packing selection.",
+      );
+    } finally {
+      setPackingBusy(false);
+    }
+  };
+
+  const setMaterial = (id: string, quantity: number) => {
+    const materials = { ...packing.materials };
+    if (quantity > 0) materials[id] = quantity;
+    else delete materials[id];
+    void savePacking(parsePackingSelection({ ...packing, materials }));
+  };
+
+  const toggleService = (id: string) => {
+    const services = packing.services.includes(id)
+      ? packing.services.filter((service) => service !== id)
+      : [...packing.services, id];
+    void savePacking(parsePackingSelection({ ...packing, services }));
+  };
+
   const startPayment = async () => {
+    if (packingBusy) return setError("Wait for the packing selection to finish saving.");
     setBusy(true);
     setError("");
     try {
@@ -195,6 +256,103 @@ export default function QuotePage({ token }: { token?: string }) {
           ))}
         </section>
 
+        <section
+          className="ws-card ws-card-pad"
+          style={{ marginTop: 20 }}
+          aria-labelledby="quote-packing"
+        >
+          <h2 id="quote-packing" style={{ marginTop: 0 }}>
+            Packing supplies &amp; add-ons
+          </h2>
+          <p className="ws-helper">
+            Optional. Boxes, wrap and covers are delivered with the crew. Your total and deposit
+            update as you choose, and nothing is charged until you pay the deposit.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              marginTop: 12,
+            }}
+          >
+            {PACKING_MATERIALS.map((material) => {
+              const quantity = packing.materials[material.id] ?? 0;
+              return (
+                <div
+                  key={material.id}
+                  style={{
+                    border: "1px solid var(--border, #e5e7eb)",
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
+                >
+                  <strong style={{ display: "block", fontSize: 14 }}>{material.label}</strong>
+                  <span className="ws-helper">
+                    {money(material.unitCents / 100)} / {material.unit}
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                    <button
+                      type="button"
+                      className="ws-btn"
+                      aria-label={`Remove one ${material.label}`}
+                      disabled={packingBusy || quantity === 0}
+                      onClick={() => setMaterial(material.id, quantity - 1)}
+                    >
+                      −
+                    </button>
+                    <span aria-live="polite" style={{ minWidth: 18, textAlign: "center" }}>
+                      {quantity}
+                    </span>
+                    <button
+                      type="button"
+                      className="ws-btn"
+                      aria-label={`Add one ${material.label}`}
+                      disabled={packingBusy || quantity >= material.max}
+                      onClick={() => setMaterial(material.id, quantity + 1)}
+                    >
+                      +
+                    </button>
+                    <span className="ws-helper" style={{ marginLeft: "auto" }}>
+                      {money((quantity * material.unitCents) / 100)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <h3 style={{ marginBottom: 6, marginTop: 16 }}>Add-on services</h3>
+          <div style={{ display: "grid", gap: 8 }}>
+            {PACKING_SERVICES.map((service) => (
+              <label key={service.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <input
+                  type="checkbox"
+                  checked={packing.services.includes(service.id)}
+                  disabled={packingBusy}
+                  onChange={() => toggleService(service.id)}
+                />
+                <span>
+                  <strong>
+                    {service.label} · {money(service.amountCents / 100)}
+                  </strong>
+                  <br />
+                  <span className="ws-helper">{service.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {packingError && (
+            <p role="alert" className="ws-helper" style={{ color: "#b91c1c" }}>
+              {packingError}
+            </p>
+          )}
+          {packingBusy && (
+            <p className="ws-helper" role="status">
+              Updating your total…
+            </p>
+          )}
+        </section>
+
         <div className="ws-quote-total">
           <span>
             <small>Estimated total</small>
@@ -203,6 +361,11 @@ export default function QuotePage({ token }: { token?: string }) {
           </span>
           <b>{money(quote.total)}</b>
         </div>
+        {quote.packingSubtotal > 0 && (
+          <p className="ws-helper" style={{ marginTop: 8 }}>
+            Includes {money(quote.packingSubtotal)} of packing supplies and add-on services.
+          </p>
+        )}
 
         {(quote.origin || quote.destination) && (
           <p className="ws-helper" style={{ marginTop: 16 }}>

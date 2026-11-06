@@ -70,6 +70,11 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 import RouteSummaryCard from "@/components/workspace/RouteSummaryCard";
 import JobRoutePricing from "@/components/workspace/JobRoutePricing";
 import JobFieldProgress from "@/components/workspace/JobFieldProgress";
+import JobExpenses from "@/components/workspace/JobExpenses";
+import PackingChecklist from "@/components/workspace/PackingChecklist";
+import InventoryScanStatus from "@/components/workspace/InventoryScanStatus";
+import JobClaims from "@/components/workspace/JobClaims";
+import OpsAlertCenter from "@/components/workspace/OpsAlertCenter";
 import CrewShiftStatus from "@/components/workspace/CrewShiftStatus";
 import ReminderConfigModal from "@/components/workspace/ReminderConfigModal";
 import VaultPhotoGallery from "@/components/workspace/VaultPhotoGallery";
@@ -255,6 +260,7 @@ export function DashboardPage({ role, navigate }: PageProps) {
           icon={<CreditCard size={17} />}
         />
       </div>
+      <OpsAlertCenter jobs={data.jobs} navigate={navigate} />
       <div className="ws-grid">
         <section className="ws-card ws-card-pad">
           <div className="ws-card-title">
@@ -2351,6 +2357,10 @@ export function JobDetailPage({ role, navigate, path }: PageProps) {
         </aside>
       </div>
       <JobRoutePricing job={job} role={role} onSaved={() => refresh()} />
+      <JobExpenses jobId={job.id} role={role} />
+      <JobClaims jobId={job.id} />
+      <PackingChecklist job={job} />
+      <InventoryScanStatus job={job} />
       <QuoteDispatch job={job} role={role} variant="panel" onSent={() => void refresh()} />
       <JobFieldProgress job={job} onRefresh={() => refresh()} />
       <VaultPhotoGallery job={job} />

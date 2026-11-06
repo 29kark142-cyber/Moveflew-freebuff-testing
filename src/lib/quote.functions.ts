@@ -6,6 +6,12 @@ import { clampDiscountPercent } from "@/shared/route-pricing";
 import { jobReference } from "@/shared/tracking";
 import { QUOTE_TOKEN_RE } from "@/shared/quote-dispatch";
 import { quoteAcceptance, quoteDepositCents } from "@/shared/quote-accept";
+import {
+  packingLines,
+  packingSubtotal,
+  parsePackingSelection,
+  type PackingSelection,
+} from "@/shared/packing";
 
 export type PublicQuoteLine = { label: string; amount: number };
 
@@ -33,6 +39,9 @@ export type PublicQuote = {
   lines: PublicQuoteLine[];
   discountPercent: number;
   total: number;
+  packingSubtotal: number;
+  packingLines: PublicQuoteLine[];
+  packing: PackingSelection;
   depositCents: number;
   payments: { stripe: boolean; testMode: boolean };
   acceptance: PublicQuoteAcceptance | null;
@@ -96,6 +105,11 @@ export const readQuote = createServerFn({ method: "GET" })
     // from server-side, so the portal must quote exactly that number when one is stored.
     const storedTotal = num(job["total"]);
     const total = storedTotal > 0 ? round(storedTotal) : computed;
+    // Packing is priced from the shared catalog; a stored subtotal is never trusted.
+    const packing = parsePackingSelection(job["packingSelection"]);
+    const packingItems = packingLines(packing);
+    const packingTotal = round(packingSubtotal(packing) / 100);
+    const quotedTotal = round(total + packingTotal);
     const lines: PublicQuoteLine[] = [
       {
         label: pricingMode === "hourly" ? "Moving crew and truck" : "Weight and mileage",
@@ -103,6 +117,10 @@ export const readQuote = createServerFn({ method: "GET" })
       },
       ...(travelFee > 0 ? [{ label: "Travel fee", amount: round(travelFee) }] : []),
       ...fees,
+      ...packingItems.map((item) => ({
+        label: item.quantity > 1 ? `${item.label} × ${item.quantity}` : item.label,
+        amount: round(item.amountCents / 100),
+      })),
       ...(discountPercent > 0
         ? [{ label: `Discount (${discountPercent}%)`, amount: round(computed - subtotal) }]
         : []),
@@ -118,7 +136,7 @@ export const readQuote = createServerFn({ method: "GET" })
       depositRule = null;
     }
     const depositCents = quoteDepositCents(
-      total,
+      quotedTotal,
       depositRule,
       typeof job["depositOverride"] === "number" ? job["depositOverride"] : null,
     );
@@ -139,7 +157,13 @@ export const readQuote = createServerFn({ method: "GET" })
       travelMinutes: num(job["travelMinutes"]),
       lines,
       discountPercent,
-      total,
+      total: quotedTotal,
+      packingSubtotal: packingTotal,
+      packingLines: packingItems.map((item) => ({
+        label: item.quantity > 1 ? `${item.label} × ${item.quantity}` : item.label,
+        amount: round(item.amountCents / 100),
+      })),
+      packing,
       depositCents,
       payments: quotePaymentsAvailability(new URL(getRequest().url).hostname),
       acceptance: acceptance

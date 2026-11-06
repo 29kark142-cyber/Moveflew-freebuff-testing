@@ -32,6 +32,7 @@ import { Route as DemoProposalRouteImport } from './routes/demo.proposal'
 import { Route as EmbedLeadRouteImport } from './routes/embed.lead'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as MoveJobIdRouteImport } from './routes/move.$jobId'
+import { Route as PortalTokenRouteImport } from './routes/portal.$token'
 import { Route as ProposalTokenRouteImport } from './routes/proposal.$token'
 import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
 import { Route as ShiftTokenRouteImport } from './routes/shift.$token'
@@ -41,14 +42,21 @@ import { Route as ApiCronRemindersRouteImport } from './routes/api.cron.reminder
 import { Route as ApiFieldSplatRouteImport } from './routes/api/field/$'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicPortalTokenRouteImport } from './routes/api/public/portal/$token'
 import { Route as ApiPublicV1LeadsRouteImport } from './routes/api/public/v1/leads'
 import { Route as ApiPublicV1QuotesRouteImport } from './routes/api/public/v1/quotes'
 import { Route as ApiQuoteTokenAcceptRouteImport } from './routes/api.quote.$token.accept'
 import { Route as ApiQuoteTokenDepositIntentRouteImport } from './routes/api.quote.$token.deposit-intent'
+import { Route as ApiQuoteTokenPackingRouteImport } from './routes/api.quote.$token.packing'
 import { Route as ApiShiftTokenRespondRouteImport } from './routes/api.shift.$token.respond'
 import { Route as ApiV1PublicQuotesRouteImport } from './routes/api/v1/public/quotes'
+import { Route as ApiPublicPortalTokenClaimsRouteImport } from './routes/api/public/portal/$token/claims'
+import { Route as ApiPublicPortalTokenPhotosRouteImport } from './routes/api/public/portal/$token/photos'
+import { Route as ApiPublicPortalTokenRequestsRouteImport } from './routes/api/public/portal/$token/requests'
 import { Route as ApiPublicV1HooksTokenRouteImport } from './routes/api/public/v1/hooks/$token'
 import { Route as ApiPublicV1TrackTokenRouteImport } from './routes/api/public/v1/track/$token'
+import { Route as ApiPublicPortalTokenDocumentsKindRouteImport } from './routes/api/public/portal/$token/documents/$kind'
+import { Route as ApiPublicPortalTokenPhotosPhotoIdRouteImport } from './routes/api/public/portal/$token/photos/$photoId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -166,6 +174,11 @@ const MoveJobIdRoute = MoveJobIdRouteImport.update({
   path: '/move/$jobId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalTokenRoute = PortalTokenRouteImport.update({
+  id: '/portal/$token',
+  path: '/portal/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProposalTokenRoute = ProposalTokenRouteImport.update({
   id: '/proposal/$token',
   path: '/proposal/$token',
@@ -212,6 +225,11 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPortalTokenRoute = ApiPublicPortalTokenRouteImport.update({
+  id: '/api/public/portal/$token',
+  path: '/api/public/portal/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1LeadsRoute = ApiPublicV1LeadsRouteImport.update({
   id: '/api/public/v1/leads',
   path: '/api/public/v1/leads',
@@ -233,6 +251,11 @@ const ApiQuoteTokenDepositIntentRoute =
     path: '/api/quote/$token/deposit-intent',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiQuoteTokenPackingRoute = ApiQuoteTokenPackingRouteImport.update({
+  id: '/api/quote/$token/packing',
+  path: '/api/quote/$token/packing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiShiftTokenRespondRoute = ApiShiftTokenRespondRouteImport.update({
   id: '/api/shift/$token/respond',
   path: '/api/shift/$token/respond',
@@ -243,6 +266,24 @@ const ApiV1PublicQuotesRoute = ApiV1PublicQuotesRouteImport.update({
   path: '/api/v1/public/quotes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPortalTokenClaimsRoute =
+  ApiPublicPortalTokenClaimsRouteImport.update({
+    id: '/claims',
+    path: '/claims',
+    getParentRoute: () => ApiPublicPortalTokenRoute,
+  } as any)
+const ApiPublicPortalTokenPhotosRoute =
+  ApiPublicPortalTokenPhotosRouteImport.update({
+    id: '/photos',
+    path: '/photos',
+    getParentRoute: () => ApiPublicPortalTokenRoute,
+  } as any)
+const ApiPublicPortalTokenRequestsRoute =
+  ApiPublicPortalTokenRequestsRouteImport.update({
+    id: '/requests',
+    path: '/requests',
+    getParentRoute: () => ApiPublicPortalTokenRoute,
+  } as any)
 const ApiPublicV1HooksTokenRoute = ApiPublicV1HooksTokenRouteImport.update({
   id: '/api/public/v1/hooks/$token',
   path: '/api/public/v1/hooks/$token',
@@ -253,6 +294,18 @@ const ApiPublicV1TrackTokenRoute = ApiPublicV1TrackTokenRouteImport.update({
   path: '/api/public/v1/track/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPortalTokenDocumentsKindRoute =
+  ApiPublicPortalTokenDocumentsKindRouteImport.update({
+    id: '/documents/$kind',
+    path: '/documents/$kind',
+    getParentRoute: () => ApiPublicPortalTokenRoute,
+  } as any)
+const ApiPublicPortalTokenPhotosPhotoIdRoute =
+  ApiPublicPortalTokenPhotosPhotoIdRouteImport.update({
+    id: '/$photoId',
+    path: '/$photoId',
+    getParentRoute: () => ApiPublicPortalTokenPhotosRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -278,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/embed/lead': typeof EmbedLeadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/move/$jobId': typeof MoveJobIdRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/shift/$token': typeof ShiftTokenRoute
@@ -287,14 +341,21 @@ export interface FileRoutesByFullPath {
   '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/portal/$token': typeof ApiPublicPortalTokenRouteWithChildren
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
   '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
+  '/api/quote/$token/packing': typeof ApiQuoteTokenPackingRoute
   '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
+  '/api/public/portal/$token/claims': typeof ApiPublicPortalTokenClaimsRoute
+  '/api/public/portal/$token/photos': typeof ApiPublicPortalTokenPhotosRouteWithChildren
+  '/api/public/portal/$token/requests': typeof ApiPublicPortalTokenRequestsRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
+  '/api/public/portal/$token/documents/$kind': typeof ApiPublicPortalTokenDocumentsKindRoute
+  '/api/public/portal/$token/photos/$photoId': typeof ApiPublicPortalTokenPhotosPhotoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -320,6 +381,7 @@ export interface FileRoutesByTo {
   '/embed/lead': typeof EmbedLeadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/move/$jobId': typeof MoveJobIdRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/shift/$token': typeof ShiftTokenRoute
@@ -329,14 +391,21 @@ export interface FileRoutesByTo {
   '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/portal/$token': typeof ApiPublicPortalTokenRouteWithChildren
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
   '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
+  '/api/quote/$token/packing': typeof ApiQuoteTokenPackingRoute
   '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
+  '/api/public/portal/$token/claims': typeof ApiPublicPortalTokenClaimsRoute
+  '/api/public/portal/$token/photos': typeof ApiPublicPortalTokenPhotosRouteWithChildren
+  '/api/public/portal/$token/requests': typeof ApiPublicPortalTokenRequestsRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
+  '/api/public/portal/$token/documents/$kind': typeof ApiPublicPortalTokenDocumentsKindRoute
+  '/api/public/portal/$token/photos/$photoId': typeof ApiPublicPortalTokenPhotosPhotoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -363,6 +432,7 @@ export interface FileRoutesById {
   '/embed/lead': typeof EmbedLeadRoute
   '/invite/$token': typeof InviteTokenRoute
   '/move/$jobId': typeof MoveJobIdRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/proposal/$token': typeof ProposalTokenRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/shift/$token': typeof ShiftTokenRoute
@@ -372,14 +442,21 @@ export interface FileRoutesById {
   '/api/field/$': typeof ApiFieldSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/portal/$token': typeof ApiPublicPortalTokenRouteWithChildren
   '/api/public/v1/leads': typeof ApiPublicV1LeadsRoute
   '/api/public/v1/quotes': typeof ApiPublicV1QuotesRoute
   '/api/quote/$token/accept': typeof ApiQuoteTokenAcceptRoute
   '/api/quote/$token/deposit-intent': typeof ApiQuoteTokenDepositIntentRoute
+  '/api/quote/$token/packing': typeof ApiQuoteTokenPackingRoute
   '/api/shift/$token/respond': typeof ApiShiftTokenRespondRoute
   '/api/v1/public/quotes': typeof ApiV1PublicQuotesRoute
+  '/api/public/portal/$token/claims': typeof ApiPublicPortalTokenClaimsRoute
+  '/api/public/portal/$token/photos': typeof ApiPublicPortalTokenPhotosRouteWithChildren
+  '/api/public/portal/$token/requests': typeof ApiPublicPortalTokenRequestsRoute
   '/api/public/v1/hooks/$token': typeof ApiPublicV1HooksTokenRoute
   '/api/public/v1/track/$token': typeof ApiPublicV1TrackTokenRoute
+  '/api/public/portal/$token/documents/$kind': typeof ApiPublicPortalTokenDocumentsKindRoute
+  '/api/public/portal/$token/photos/$photoId': typeof ApiPublicPortalTokenPhotosPhotoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -407,6 +484,7 @@ export interface FileRouteTypes {
     | '/embed/lead'
     | '/invite/$token'
     | '/move/$jobId'
+    | '/portal/$token'
     | '/proposal/$token'
     | '/quote/$token'
     | '/shift/$token'
@@ -416,14 +494,21 @@ export interface FileRouteTypes {
     | '/api/field/$'
     | '/api/webhooks/stripe'
     | '/api/public/payments/webhook'
+    | '/api/public/portal/$token'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
     | '/api/quote/$token/deposit-intent'
+    | '/api/quote/$token/packing'
     | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
+    | '/api/public/portal/$token/claims'
+    | '/api/public/portal/$token/photos'
+    | '/api/public/portal/$token/requests'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
+    | '/api/public/portal/$token/documents/$kind'
+    | '/api/public/portal/$token/photos/$photoId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -449,6 +534,7 @@ export interface FileRouteTypes {
     | '/embed/lead'
     | '/invite/$token'
     | '/move/$jobId'
+    | '/portal/$token'
     | '/proposal/$token'
     | '/quote/$token'
     | '/shift/$token'
@@ -458,14 +544,21 @@ export interface FileRouteTypes {
     | '/api/field/$'
     | '/api/webhooks/stripe'
     | '/api/public/payments/webhook'
+    | '/api/public/portal/$token'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
     | '/api/quote/$token/deposit-intent'
+    | '/api/quote/$token/packing'
     | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
+    | '/api/public/portal/$token/claims'
+    | '/api/public/portal/$token/photos'
+    | '/api/public/portal/$token/requests'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
+    | '/api/public/portal/$token/documents/$kind'
+    | '/api/public/portal/$token/photos/$photoId'
   id:
     | '__root__'
     | '/'
@@ -491,6 +584,7 @@ export interface FileRouteTypes {
     | '/embed/lead'
     | '/invite/$token'
     | '/move/$jobId'
+    | '/portal/$token'
     | '/proposal/$token'
     | '/quote/$token'
     | '/shift/$token'
@@ -500,14 +594,21 @@ export interface FileRouteTypes {
     | '/api/field/$'
     | '/api/webhooks/stripe'
     | '/api/public/payments/webhook'
+    | '/api/public/portal/$token'
     | '/api/public/v1/leads'
     | '/api/public/v1/quotes'
     | '/api/quote/$token/accept'
     | '/api/quote/$token/deposit-intent'
+    | '/api/quote/$token/packing'
     | '/api/shift/$token/respond'
     | '/api/v1/public/quotes'
+    | '/api/public/portal/$token/claims'
+    | '/api/public/portal/$token/photos'
+    | '/api/public/portal/$token/requests'
     | '/api/public/v1/hooks/$token'
     | '/api/public/v1/track/$token'
+    | '/api/public/portal/$token/documents/$kind'
+    | '/api/public/portal/$token/photos/$photoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -534,6 +635,7 @@ export interface RootRouteChildren {
   EmbedLeadRoute: typeof EmbedLeadRoute
   InviteTokenRoute: typeof InviteTokenRoute
   MoveJobIdRoute: typeof MoveJobIdRoute
+  PortalTokenRoute: typeof PortalTokenRoute
   ProposalTokenRoute: typeof ProposalTokenRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
   ShiftTokenRoute: typeof ShiftTokenRoute
@@ -543,10 +645,12 @@ export interface RootRouteChildren {
   ApiFieldSplatRoute: typeof ApiFieldSplatRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiPublicPortalTokenRoute: typeof ApiPublicPortalTokenRouteWithChildren
   ApiPublicV1LeadsRoute: typeof ApiPublicV1LeadsRoute
   ApiPublicV1QuotesRoute: typeof ApiPublicV1QuotesRoute
   ApiQuoteTokenAcceptRoute: typeof ApiQuoteTokenAcceptRoute
   ApiQuoteTokenDepositIntentRoute: typeof ApiQuoteTokenDepositIntentRoute
+  ApiQuoteTokenPackingRoute: typeof ApiQuoteTokenPackingRoute
   ApiShiftTokenRespondRoute: typeof ApiShiftTokenRespondRoute
   ApiV1PublicQuotesRoute: typeof ApiV1PublicQuotesRoute
   ApiPublicV1HooksTokenRoute: typeof ApiPublicV1HooksTokenRoute
@@ -716,6 +820,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoveJobIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/$token': {
+      id: '/portal/$token'
+      path: '/portal/$token'
+      fullPath: '/portal/$token'
+      preLoaderRoute: typeof PortalTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/proposal/$token': {
       id: '/proposal/$token'
       path: '/proposal/$token'
@@ -779,6 +890,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/portal/$token': {
+      id: '/api/public/portal/$token'
+      path: '/api/public/portal/$token'
+      fullPath: '/api/public/portal/$token'
+      preLoaderRoute: typeof ApiPublicPortalTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/leads': {
       id: '/api/public/v1/leads'
       path: '/api/public/v1/leads'
@@ -807,6 +925,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiQuoteTokenDepositIntentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/quote/$token/packing': {
+      id: '/api/quote/$token/packing'
+      path: '/api/quote/$token/packing'
+      fullPath: '/api/quote/$token/packing'
+      preLoaderRoute: typeof ApiQuoteTokenPackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/shift/$token/respond': {
       id: '/api/shift/$token/respond'
       path: '/api/shift/$token/respond'
@@ -820,6 +945,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/v1/public/quotes'
       preLoaderRoute: typeof ApiV1PublicQuotesRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/portal/$token/claims': {
+      id: '/api/public/portal/$token/claims'
+      path: '/claims'
+      fullPath: '/api/public/portal/$token/claims'
+      preLoaderRoute: typeof ApiPublicPortalTokenClaimsRouteImport
+      parentRoute: typeof ApiPublicPortalTokenRoute
+    }
+    '/api/public/portal/$token/photos': {
+      id: '/api/public/portal/$token/photos'
+      path: '/photos'
+      fullPath: '/api/public/portal/$token/photos'
+      preLoaderRoute: typeof ApiPublicPortalTokenPhotosRouteImport
+      parentRoute: typeof ApiPublicPortalTokenRoute
+    }
+    '/api/public/portal/$token/requests': {
+      id: '/api/public/portal/$token/requests'
+      path: '/requests'
+      fullPath: '/api/public/portal/$token/requests'
+      preLoaderRoute: typeof ApiPublicPortalTokenRequestsRouteImport
+      parentRoute: typeof ApiPublicPortalTokenRoute
     }
     '/api/public/v1/hooks/$token': {
       id: '/api/public/v1/hooks/$token'
@@ -835,8 +981,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TrackTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/portal/$token/documents/$kind': {
+      id: '/api/public/portal/$token/documents/$kind'
+      path: '/documents/$kind'
+      fullPath: '/api/public/portal/$token/documents/$kind'
+      preLoaderRoute: typeof ApiPublicPortalTokenDocumentsKindRouteImport
+      parentRoute: typeof ApiPublicPortalTokenRoute
+    }
+    '/api/public/portal/$token/photos/$photoId': {
+      id: '/api/public/portal/$token/photos/$photoId'
+      path: '/$photoId'
+      fullPath: '/api/public/portal/$token/photos/$photoId'
+      preLoaderRoute: typeof ApiPublicPortalTokenPhotosPhotoIdRouteImport
+      parentRoute: typeof ApiPublicPortalTokenPhotosRoute
+    }
   }
 }
+
+interface ApiPublicPortalTokenPhotosRouteChildren {
+  ApiPublicPortalTokenPhotosPhotoIdRoute: typeof ApiPublicPortalTokenPhotosPhotoIdRoute
+}
+
+const ApiPublicPortalTokenPhotosRouteChildren: ApiPublicPortalTokenPhotosRouteChildren =
+  {
+    ApiPublicPortalTokenPhotosPhotoIdRoute:
+      ApiPublicPortalTokenPhotosPhotoIdRoute,
+  }
+
+const ApiPublicPortalTokenPhotosRouteWithChildren =
+  ApiPublicPortalTokenPhotosRoute._addFileChildren(
+    ApiPublicPortalTokenPhotosRouteChildren,
+  )
+
+interface ApiPublicPortalTokenRouteChildren {
+  ApiPublicPortalTokenClaimsRoute: typeof ApiPublicPortalTokenClaimsRoute
+  ApiPublicPortalTokenPhotosRoute: typeof ApiPublicPortalTokenPhotosRouteWithChildren
+  ApiPublicPortalTokenRequestsRoute: typeof ApiPublicPortalTokenRequestsRoute
+  ApiPublicPortalTokenDocumentsKindRoute: typeof ApiPublicPortalTokenDocumentsKindRoute
+}
+
+const ApiPublicPortalTokenRouteChildren: ApiPublicPortalTokenRouteChildren = {
+  ApiPublicPortalTokenClaimsRoute: ApiPublicPortalTokenClaimsRoute,
+  ApiPublicPortalTokenPhotosRoute: ApiPublicPortalTokenPhotosRouteWithChildren,
+  ApiPublicPortalTokenRequestsRoute: ApiPublicPortalTokenRequestsRoute,
+  ApiPublicPortalTokenDocumentsKindRoute:
+    ApiPublicPortalTokenDocumentsKindRoute,
+}
+
+const ApiPublicPortalTokenRouteWithChildren =
+  ApiPublicPortalTokenRoute._addFileChildren(ApiPublicPortalTokenRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -863,6 +1056,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmbedLeadRoute: EmbedLeadRoute,
   InviteTokenRoute: InviteTokenRoute,
   MoveJobIdRoute: MoveJobIdRoute,
+  PortalTokenRoute: PortalTokenRoute,
   ProposalTokenRoute: ProposalTokenRoute,
   QuoteTokenRoute: QuoteTokenRoute,
   ShiftTokenRoute: ShiftTokenRoute,
@@ -872,10 +1066,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFieldSplatRoute: ApiFieldSplatRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiPublicPortalTokenRoute: ApiPublicPortalTokenRouteWithChildren,
   ApiPublicV1LeadsRoute: ApiPublicV1LeadsRoute,
   ApiPublicV1QuotesRoute: ApiPublicV1QuotesRoute,
   ApiQuoteTokenAcceptRoute: ApiQuoteTokenAcceptRoute,
   ApiQuoteTokenDepositIntentRoute: ApiQuoteTokenDepositIntentRoute,
+  ApiQuoteTokenPackingRoute: ApiQuoteTokenPackingRoute,
   ApiShiftTokenRespondRoute: ApiShiftTokenRespondRoute,
   ApiV1PublicQuotesRoute: ApiV1PublicQuotesRoute,
   ApiPublicV1HooksTokenRoute: ApiPublicV1HooksTokenRoute,
