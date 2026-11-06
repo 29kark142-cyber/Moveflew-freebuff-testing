@@ -423,7 +423,10 @@ export default function WorkspaceShell({
   };
   const tour = useProductTour({
     autoStart,
-    onBeforeStart: async () => {
+    navigate,
+    currentPath: path,
+    onBeforeStart: async (tourId) => {
+      if (tourId !== "full_platform") return;
       // Wait for the drawer transition so the first highlight is measured on it.
       if (revealDrawer()) {
         await new Promise((resolve) => window.setTimeout(resolve, 320));
@@ -574,12 +577,12 @@ export default function WorkspaceShell({
             <button
               className="ws-btn ws-tour-trigger"
               data-tour="tour-trigger"
-              title={t("Take the product tour")}
-              aria-label={t("Take the product tour")}
-              onClick={() => void tour.startTour()}
+              title={t("Re-take the full platform tour")}
+              aria-label={t("Re-take the full platform tour")}
+              onClick={() => void tour.startTour("full_platform")}
             >
               <HelpCircle size={16} />
-              <span className="ws-tour-trigger__label">{t("Product tour")}</span>
+              <span className="ws-tour-trigger__label">{t("Re-take tour")}</span>
             </button>
             <FeedbackButton />
             <LanguageSwitcher />

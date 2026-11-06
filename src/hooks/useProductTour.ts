@@ -1,9 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
+import { crm } from "@/lib/crm";
+import {
+  BOL_TOUR_PATH,
+  GUIDED_TOUR_EVENT,
+  buildGuidedTourSteps,
+  clearTourCompletion,
+  getGuidedTour,
+  markTourCompleted,
+  resolveTourSelector,
+  type GuidedTourId,
+  type GuidedTourStep,
+} from "@/lib/guided-tour";
 
 /** One-time onboarding flag. `getItem` returning null means the user has never seen the tour. */
 export const TOUR_STORAGE_KEY = "has_seen_tour";
+
+export { resolveTourSelector };
 
 export type ProductTourStep = {
   id: string;
@@ -19,56 +33,24 @@ export type ProductTourStep = {
   align?: "start" | "center" | "end";
 };
 
-export const PRODUCT_TOUR_STEPS: ProductTourStep[] = [
-  {
-    id: "navigation",
-    selectors: ['[data-tour="workspace-nav"]', ".ws-nav"],
-    title: "Your workspace navigation",
-    description: "Access Jobs, Storage, and AI Credits here.",
-    side: "right",
-  },
-  {
-    id: "quote",
-    selectors: ['[data-tour="quick-quote"]', '[data-tour="estimates-nav"]'],
-    title: "Quote a move in minutes",
-    description: "Create new moving quotes for clients from here.",
-    side: "bottom",
-    align: "end",
-  },
-  {
-    id: "job-sheet",
-    selectors: [
-      '[data-tour="field-job-sheet"]',
-      '[data-tour="job-sheet"]',
-      '[data-tour="jobs-nav"]',
-    ],
-    title: "The job sheet",
-    description: "View field details, damage photo uploads, and customer signatures.",
-    side: "right",
-  },
-  {
-    id: "storage",
-    selectors: ['[data-tour="storage-vaults"]', '[data-tour="storage-page"]'],
-    title: "Storage vaults",
-    description: "Scan barcodes and track vault inventory.",
-    side: "right",
-  },
-];
-
-/** First selector that is currently rendered, or null when the step has no anchor. */
-export function resolveTourSelector(selectors: string[]): string | null {
-  if (typeof document === "undefined") return null;
-  for (const selector of selectors) {
-    if (document.querySelector(selector)) return selector;
-  }
-  return null;
-}
+const FULL_PLATFORM_TOUR = getGuidedTour("full_platform");
 
 /**
- * Builds driver.js steps from the tour definition and the elements on screen right now.
- * `onStepStart` is fired per step so the host screen can reveal a container (a mobile
- * drawer) before the stage is measured.
+ * The original onboarding sequence remains exported for compatibility. The master
+ * tour starts with these same four steps, now followed by the rest of the platform.
  */
+export const PRODUCT_TOUR_STEPS: ProductTourStep[] = (
+  FULL_PLATFORM_TOUR?.steps.slice(0, 4) ?? []
+).map(({ id, selectors, title, description, side, align }) => ({
+  id,
+  selectors,
+  title,
+  description,
+  side,
+  align,
+}));
+
+/** Builds the legacy one-page step list; used by the original onboarding tests. */
 export function buildTourSteps(onStepStart?: (stepId: string) => void): DriveStep[] {
   return PRODUCT_TOUR_STEPS.map((step) => {
     const selector = resolveTourSelector(step.selectors);
@@ -86,20 +68,24 @@ export function buildTourSteps(onStepStart?: (stepId: string) => void): DriveSte
 }
 
 export type ProductTourOptions = {
-  /** First sign-in: run the tour once, then remember it. */
+  /** First sign-in: run the full tour once, then remember it. */
   autoStart?: boolean;
   /** Grace period so the host screen can finish loading before step 1 is measured. */
   delayMs?: number;
   /** Runs before the first step, e.g. to open a collapsed mobile drawer. */
-  onBeforeStart?: () => void | Promise<void>;
+  onBeforeStart?: (tourId: GuidedTourId) => void | Promise<void>;
   /** Fires as each step is highlighted, with that step's id. */
   onStepStart?: (stepId: string) => void;
   /** Fires when the tour completes, is dismissed or is stopped. */
   onTourEnd?: () => void;
+  /** Shell navigation used to move between topic pages during a tour. */
+  navigate?: (path: string) => void;
+  /** Current route, used to avoid unnecessary navigation and resolve job-specific tours. */
+  currentPath?: string;
 };
 
 export type ProductTourApi = {
-  startTour: () => Promise<void>;
+  startTour: (tourId?: GuidedTourId) => Promise<void>;
   stopTour: () => void;
   resetTour: () => void;
   hasSeenTour: boolean;
@@ -107,8 +93,8 @@ export type ProductTourApi = {
 };
 
 /**
- * Reusable product tour. The driver bundle is imported on demand (never on first
- * paint) and the tour marks itself as seen on completion, dismissal or Escape.
+ * Reusable guided-tour hook. The driver bundle is imported on demand and each tour
+ * remembers completion under its own `tour_<id>_completed` key.
  */
 export default function useProductTour({
   autoStart = false,
@@ -116,6 +102,8 @@ export default function useProductTour({
   onBeforeStart,
   onStepStart,
   onTourEnd,
+  navigate,
+  currentPath,
 }: ProductTourOptions = {}): ProductTourApi {
   const [hasSeenTour, setHasSeenTour] = useState(() => {
     if (typeof localStorage === "undefined") return false;
@@ -129,6 +117,10 @@ export default function useProductTour({
   const instance = useRef<ReturnType<typeof import("driver.js").driver> | null>(null);
   const autoStarted = useRef(false);
   const refreshTimer = useRef<number | null>(null);
+  const transitioning = useRef(false);
+  const completed = useRef(false);
+  const pathRef = useRef(currentPath ?? "");
+  const navigateRef = useRef(navigate);
 
   // Callbacks live in refs so a re-rendering host never rebuilds a live tour.
   const beforeStart = useRef(onBeforeStart);
@@ -139,6 +131,12 @@ export default function useProductTour({
     stepStart.current = onStepStart;
     tourEnd.current = onTourEnd;
   });
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
+  useEffect(() => {
+    if (currentPath) pathRef.current = currentPath;
+  }, [currentPath]);
 
   const cancelRefresh = useCallback(() => {
     if (refreshTimer.current !== null) {
@@ -165,51 +163,155 @@ export default function useProductTour({
     setHasSeenTour(true);
   }, []);
 
+  const waitForStep = useCallback(async (step: GuidedTourStep) => {
+    if (!step.selectors.length) return;
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      if (resolveTourSelector(step.selectors)) return;
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 60));
+    }
+  }, []);
+
+  const prepareStep = useCallback(async (step: GuidedTourStep) => {
+    const prepare = step.prepare;
+    if (!prepare) return;
+    if (prepare.click) {
+      // The destination screen may still be mounting after client-side navigation.
+      const deadline = Date.now() + 3000;
+      let target = document.querySelector<HTMLElement>(prepare.click);
+      while (!target && Date.now() < deadline) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 60));
+        target = document.querySelector<HTMLElement>(prepare.click);
+      }
+      target?.click();
+    }
+    if (prepare.event) {
+      window.dispatchEvent(new CustomEvent(prepare.event, { detail: prepare.detail }));
+    }
+    if (prepare.click || prepare.event) {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 160));
+    }
+  }, []);
+
+  const resolveStepPath = useCallback(async (step: GuidedTourStep) => {
+    if (!step.path) return null;
+    if (step.path !== BOL_TOUR_PATH) return step.path;
+    const currentJob = /^\/app\/jobs\/(\d+)(?:\/bol)?\/?$/.exec(pathRef.current);
+    if (currentJob) return `/app/jobs/${currentJob[1]}/bol`;
+    try {
+      const jobs = await crm.jobs();
+      return jobs[0] ? `/app/jobs/${jobs[0].id}/bol` : "/app/jobs";
+    } catch {
+      return "/app/jobs";
+    }
+  }, []);
+
   const stopTour = useCallback(() => {
     instance.current?.destroy();
     instance.current = null;
     setIsRunning(false);
   }, []);
 
-  const startTour = useCallback(async () => {
-    if (instance.current) return;
-    try {
-      // Host preparation must never block the tour from opening.
-      await beforeStart.current?.();
-    } catch {
-      /* ignore: the tour still runs against whatever is on screen */
-    }
-    const { driver } = await import("driver.js");
-    const tour = driver({
-      showProgress: true,
-      progressText: "{{current}} of {{total}}",
-      nextBtnText: "Next",
-      prevBtnText: "Back",
-      doneBtnText: "Got it",
-      allowClose: true,
-      overlayColor: "rgba(6, 20, 34, 0.62)",
-      stagePadding: 6,
-      stageRadius: 12,
-      popoverClass: "moveflew-tour",
-      steps: buildTourSteps((stepId) => {
-        stepStart.current?.(stepId);
-        scheduleRefresh();
-      }),
-      onDestroyed: () => {
-        instance.current = null;
-        setIsRunning(false);
-        cancelRefresh();
-        markSeen();
-        tourEnd.current?.();
-      },
-    });
-    instance.current = tour;
-    setIsRunning(true);
-    tour.drive();
-  }, [cancelRefresh, markSeen, scheduleRefresh]);
+  const startTour = useCallback(
+    async (tourId: GuidedTourId = "full_platform") => {
+      const definition = getGuidedTour(tourId);
+      if (!definition || !definition.steps.length) return;
+      if (instance.current) instance.current.destroy();
+      completed.current = false;
+      transitioning.current = false;
 
-  // First sign-in: run once, then remember it. The hosting screen only passes
-  // autoStart once onboarding is finished, so it never fights the setup wizard.
+      try {
+        // Host preparation must never block the tour from opening.
+        await beforeStart.current?.(tourId);
+      } catch {
+        /* ignore: the tour still runs against whatever is on screen */
+      }
+
+      const first = definition.steps[0];
+      const firstPath = await resolveStepPath(first);
+      if (firstPath && firstPath !== pathRef.current) {
+        navigateRef.current?.(firstPath);
+        pathRef.current = firstPath;
+      }
+      await prepareStep(first);
+      await waitForStep(first);
+
+      const { driver } = await import("driver.js");
+      let activeTour: ReturnType<typeof import("driver.js").driver> | null = null;
+
+      const moveToStep = async (index: number) => {
+        if (transitioning.current) return;
+        const target = definition.steps[index];
+        if (!target) {
+          completed.current = true;
+          activeTour?.destroy();
+          return;
+        }
+        transitioning.current = true;
+        try {
+          const targetPath = await resolveStepPath(target);
+          if (targetPath && targetPath !== pathRef.current) {
+            navigateRef.current?.(targetPath);
+            pathRef.current = targetPath;
+          }
+          await prepareStep(target);
+          await waitForStep(target);
+          scheduleRefresh();
+          activeTour?.moveTo(index);
+        } finally {
+          transitioning.current = false;
+        }
+      };
+
+      activeTour = driver({
+        showProgress: true,
+        progressText: "{{current}} of {{total}}",
+        nextBtnText: "Next",
+        prevBtnText: "Back",
+        doneBtnText: "Got it",
+        allowClose: true,
+        overlayColor: "rgba(6, 20, 34, 0.62)",
+        stagePadding: 6,
+        stageRadius: 12,
+        popoverClass: "moveflew-tour",
+        steps: buildGuidedTourSteps(
+          definition,
+          (stepId) => {
+            stepStart.current?.(stepId);
+            scheduleRefresh();
+          },
+          (index) => {
+            void moveToStep(index);
+          },
+        ),
+        onDestroyed: () => {
+          instance.current = null;
+          setIsRunning(false);
+          cancelRefresh();
+          markSeen();
+          if (completed.current) markTourCompleted(definition.id);
+          tourEnd.current?.();
+        },
+      });
+      instance.current = activeTour;
+      setIsRunning(true);
+      activeTour.drive(0);
+    },
+    [cancelRefresh, markSeen, prepareStep, resolveStepPath, scheduleRefresh, waitForStep],
+  );
+
+  // Any surface can launch a tour by dispatching the shared event.
+  useEffect(() => {
+    const launch = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: GuidedTourId }>).detail?.id;
+      if (id) void startTour(id);
+    };
+    window.addEventListener(GUIDED_TOUR_EVENT, launch);
+    return () => window.removeEventListener(GUIDED_TOUR_EVENT, launch);
+  }, [startTour]);
+
+  // First sign-in: run the full tour once, then remember it. The hosting screen only
+  // passes autoStart once onboarding is finished, so it never fights the setup wizard.
   useEffect(() => {
     if (!autoStart || autoStarted.current) return;
     let seen = false;
@@ -221,7 +323,7 @@ export default function useProductTour({
     if (seen) return;
     autoStarted.current = true;
     const timer = window.setTimeout(() => {
-      void startTour();
+      void startTour("full_platform");
     }, delayMs);
     return () => window.clearTimeout(timer);
   }, [autoStart, delayMs, startTour]);
@@ -242,6 +344,7 @@ export default function useProductTour({
     } catch {
       /* ignore */
     }
+    clearTourCompletion("full_platform");
     setHasSeenTour(false);
     autoStarted.current = false;
   }, []);

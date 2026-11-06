@@ -127,7 +127,7 @@ export default function SurgePricingPage({
   };
 
   return (
-    <section className="ws-settings-section" style={{ maxWidth: 980 }}>
+    <section className="ws-settings-section" style={{ maxWidth: 980 }} data-tour="surge-pricing">
       <div className="ws-card ws-card-pad">
         <div className="ws-card-title">
           <div>
@@ -178,7 +178,7 @@ export default function SurgePricingPage({
           </label>
         </div>
         <div className="ws-form-grid three" style={{ marginTop: 12 }}>
-          <label>
+          <label data-tour="surge-weekend">
             <span className="ws-helper">Weekend markup %</span>
             <input
               className="ws-input"
@@ -213,7 +213,7 @@ export default function SurgePricingPage({
         </div>
       </div>
 
-      <div className="ws-card ws-card-pad" style={{ marginTop: 16 }}>
+      <div className="ws-card ws-card-pad" style={{ marginTop: 16 }} data-tour="surge-seasonal">
         <div className="ws-card-title">
           <div>
             <h2>Peak season date ranges</h2>
@@ -449,7 +449,7 @@ export default function SurgePricingPage({
 
       {canEdit && (
         <div className="ws-actions" style={{ marginTop: 16 }}>
-          <button className="ws-btn primary" disabled={busy} onClick={() => void save()}>
+          <button className="ws-btn primary" data-tour="surge-save" disabled={busy} onClick={() => void save()}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save surge
             pricing
           </button>

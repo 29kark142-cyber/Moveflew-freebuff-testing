@@ -155,7 +155,7 @@ export default function MobileField({ role,userId,workspaceId }: { role: string;
   }, [jobs, openId, openJob]);
 
   return (
-    <div className="mx-auto w-full max-w-xl space-y-4 pb-24">
+    <div className="mx-auto w-full max-w-xl space-y-4 pb-24" data-tour="field-workspace">
       {/* Subtle top banner: offline captures are queued in IndexedDB, never dropped. */}
       {(offline || pending > 0) && (
         <div role="status" aria-live="polite" className="sticky top-0 z-10 flex items-start gap-2 rounded-lg border border-border bg-muted/90 px-3 py-2 text-xs backdrop-blur">
@@ -219,7 +219,7 @@ function QuickActions({ job }: { job: FieldJob }) {
 function JobCard({ job, onOpen }: { job: FieldJob; onOpen: () => void }) {
   return (
     <article className="space-y-3 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm">
-      <button onClick={onOpen} className="block w-full text-left">
+      <button onClick={onOpen} className="block w-full text-left" data-tour="field-open-job">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-primary">{hourLabel(job.startHour)}</p>
@@ -336,7 +336,7 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
       </div>
       <QuickActions job={job} />
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4" data-tour="field-milestones">
         <h2 className="font-semibold text-card-foreground">Timecard</h2>
         <ol className="space-y-2">
           {FIELD_PHASES.map(p => (
@@ -354,7 +354,7 @@ function JobSheet({ job, me, role, scope,onBack, onChange, queue }: { job: Field
         {done && <p className="text-sm text-foreground">Billable time: <strong>{job.bill.hours} h</strong> (pickup arrival to completion)</p>}
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4" data-tour="field-checkin">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-semibold text-card-foreground">Driver check-in</h2>
           <span className="text-xs text-muted-foreground">

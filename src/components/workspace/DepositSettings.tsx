@@ -35,7 +35,7 @@ export default function DepositSettings({ admin }: { admin:boolean }) {
     try { const result=await configureQuoteIntake({data:{workspaceId:Number(getWorkspaceId())}});setCredential(result.token);toast.success('Website credential created; previous credentials are now invalid'); }
     catch(e) {setError(e instanceof Error?e.message:'Could not configure intake');} finally {setBusy(false);}
   }
-  return <section className="space-y-6 py-6">
+  return <section className="space-y-6 py-6" data-tour="deposit-settings">
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Default proposal deposit</h2>
       <div className="grid gap-4 sm:grid-cols-2 max-w-lg">

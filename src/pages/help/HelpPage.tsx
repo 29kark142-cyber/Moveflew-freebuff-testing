@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Bot,
+  Compass,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import type { ModuleProps } from "@shared/expansion";
@@ -23,6 +24,7 @@ import {
 } from "@shared/help";
 import { useI18n } from "@/lib/i18n";
 import { requestCopilotRestore } from "@/lib/copilot-visibility";
+import { requestGuidedTour } from "@/lib/guided-tour";
 import "./help.css";
 
 export default function HelpPage({ role, navigate }: ModuleProps) {
@@ -297,6 +299,14 @@ export default function HelpPage({ role, navigate }: ModuleProps) {
           >
             <Bot size={13} aria-hidden="true" />
             {tx("Open AI assistant", "Открыть AI-помощника")}
+          </button>
+          <button
+            type="button"
+            className="help-assistant-restore"
+            onClick={() => requestGuidedTour("full_platform")}
+          >
+            <Compass size={13} aria-hidden="true" />
+            {tx("Re-take tour", "Пройти тур заново")}
           </button>
         </div>
       </header>

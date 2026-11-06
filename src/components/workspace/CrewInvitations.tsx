@@ -285,7 +285,7 @@ export default function CrewInvitations({
   };
 
   return (
-    <section className="crew-invitations ws-card ws-card-pad">
+    <section className="crew-invitations ws-card ws-card-pad" data-tour="crew-invitations">
       <header className="crew-invitations__head">
         <div>
           <span className="ws-eyebrow">
@@ -339,7 +339,7 @@ export default function CrewInvitations({
             />
           </label>
         )}
-        <label>
+        <label data-tour="crew-invite-role">
           {tx("Workspace role", "Роль в рабочем пространстве")}
           <select
             value={kind === "link" ? "crew" : inviteRole}
@@ -359,7 +359,7 @@ export default function CrewInvitations({
               ))}
           </select>
         </label>
-        <label>
+        <label data-tour="crew-invite-rate">
           {tx("Hourly rate (USD)", "Почасовая ставка (USD)")}
           <input
             inputMode="decimal"

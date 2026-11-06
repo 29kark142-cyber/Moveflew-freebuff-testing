@@ -401,7 +401,7 @@ export default function SchedulePage({
   };
 
   return (
-    <div className="schedule-page">
+    <div className="schedule-page" data-tour="schedule-board">
       <header className="schedule-head">
         <div>
           <h1>{tx("Schedule", "Расписание")}</h1>
@@ -492,7 +492,7 @@ export default function SchedulePage({
               ))}
             </select>
           </label>
-          <label className="ws-field">
+          <label className="ws-field" data-tour="schedule-crew-filter">
             {tx("Crew member", "Сотрудник")}
             <select
               className="ws-input"

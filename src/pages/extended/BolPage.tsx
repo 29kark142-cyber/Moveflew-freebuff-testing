@@ -138,14 +138,14 @@ function BolSignoff({
   const label = role === "origin" ? "Origin pickup sign-off" : "Destination delivery sign-off";
   if (existing)
     return (
-      <div className="rounded-xl border border-border p-3">
+      <div className="rounded-xl border border-border p-3" data-tour={`bol-${role}-signoff`}>
         <b className="flex items-center gap-1 text-sm"><Check size={14} /> {label}</b>
         <p className="text-xs text-muted-foreground">{existing.signerName || "Customer"} · {existing.signedAt ? new Date(existing.signedAt).toLocaleString() : "Signed"}</p>
         <img src={existing.signature} alt={label} className="mt-2 h-24 w-full rounded border border-border object-contain" />
       </div>
     );
   return (
-    <div className="rounded-xl border border-border p-3 space-y-2">
+    <div className="rounded-xl border border-border p-3 space-y-2" data-tour={`bol-${role}-signoff`}>
       <b className="flex items-center gap-1 text-sm"><PenLine size={14} /> {label}</b>
       <label className="block text-sm">
         Signer name
@@ -184,7 +184,7 @@ function BolDocumentView({
   const generated = new Date(data.generatedAt);
   const date = Number.isNaN(generated.getTime()) ? data.generatedAt : generated.toLocaleString();
   return (
-    <article className="ws-card ws-card-pad ops-print-doc space-y-4">
+    <article className="ws-card ws-card-pad ops-print-doc space-y-4" data-tour="bol-document">
       <header className="ops-print-doc__head">
         <div>
           <span className="ws-eyebrow">Legal moving record</span>
@@ -259,7 +259,7 @@ function BolDocumentView({
         {!canSign && <p className="text-sm text-muted-foreground">Only dispatch and crew can add signatures.</p>}
         {data.pdf && <p className="flex items-center gap-1 text-xs text-muted-foreground"><FileText size={13} /> Signed PDF attached to this job’s documents.</p>}
       </section>
-      <div className="ops-no-print">
+      <div className="ops-no-print" data-tour="bol-pdf">
         <button className="ws-btn" onClick={() => void onRefresh()}><RefreshCw size={14} /> Reload signed record</button>
       </div>
     </article>

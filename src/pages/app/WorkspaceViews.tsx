@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import DepositSettings from "@/components/workspace/DepositSettings";
 import TravelSettings from "@/components/workspace/TravelSettings";
 import IntegrationsHub from "@/components/workspace/IntegrationsHub";
+import InteractiveGuides from "@/components/workspace/InteractiveGuides";
+import { QUOTE_TOUR_STEP_EVENT } from "@/lib/guided-tour";
 import { planRoute } from "@/lib/travel.functions";
 import { FUEL_FEE_NAME, fuelCharge, travelCharge } from "@/lib/travel-rules";
 import ProposalPublisher from "@/components/workspace/ProposalPublisher";
@@ -910,7 +912,7 @@ export function EstimatesPage({ role, navigate }: PageProps) {
           navigate("/app/estimates/new");
         }}
       />
-      <section className="ws-card ws-card-pad">
+      <section className="ws-card ws-card-pad" data-tour="estimates-page">
         <div className="ws-table-wrap">
           <table className="ws-table">
             <thead>
@@ -1080,6 +1082,14 @@ export function EstimateWizardPage({ navigate, path }: PageProps) {
   const { t } = useI18n();
   const { data: pricing, loading, error } = useRemote(() => crm.pricing(), []);
   const [step, setStep] = useState(0);
+  useEffect(() => {
+    const setTourStep = (event: Event) => {
+      const next = Number((event as CustomEvent<unknown>).detail);
+      if (Number.isInteger(next) && next >= 0 && next <= 3) setStep(next);
+    };
+    window.addEventListener(QUOTE_TOUR_STEP_EVENT, setTourStep);
+    return () => window.removeEventListener(QUOTE_TOUR_STEP_EVENT, setTourStep);
+  }, []);
   const [form, setForm] = useState<QuoteForm | null>(null);
   const [distanceError, setDistanceError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1385,7 +1395,7 @@ export function EstimateWizardPage({ navigate, path }: PageProps) {
           })}
         </div>
         {step === 0 && (
-          <div className="ws-form-grid three">
+          <div className="ws-form-grid three" data-tour="quote-customer">
             <Field label={t("Customer name")}>
               <input
                 className="ws-input"
@@ -1522,7 +1532,7 @@ export function EstimateWizardPage({ navigate, path }: PageProps) {
                 })}
               </span>
             </div>
-            <div className="ws-inventory">
+            <div className="ws-inventory" data-tour="quote-inventory">
               {inventoryChoices
                 .filter(item =>
                   `${item.name} ${item.room} ${inventoryText(item, "name", t)} ${inventoryText(item, "room", t)}`
@@ -1737,7 +1747,7 @@ export function EstimateWizardPage({ navigate, path }: PageProps) {
                 </div>
               ))}
               <Field full label={t("Packing materials")}>
-                <div className="ws-material-options">
+                <div className="ws-material-options" data-tour="quote-packing-materials">
                   {pricing.materials.length ? (
                     pricing.materials.map((material, index) => {
                       const quantity =
@@ -1898,7 +1908,7 @@ export function EstimateWizardPage({ navigate, path }: PageProps) {
                 />
               </Field>
             </div>
-            <aside className="ws-card ws-card-pad">
+            <aside className="ws-card ws-card-pad" data-tour="quote-preview">
               <div className="ws-card-title">
                 <div>
                   <h2>{t("Proposal preview")}</h2>
@@ -2066,7 +2076,7 @@ export function JobsPage({ role, navigate }: PageProps) {
           </select>
         </div>
       </div>
-      <section className="ws-card ws-card-pad">
+      <section className="ws-card ws-card-pad" data-tour="jobs-page">
         <div className="ws-table-wrap">
           <table className="ws-table">
             <thead>
@@ -4766,6 +4776,7 @@ export function SettingsPage({ role, navigate, integrationsTab, workspaceId = Nu
           { role: t(role.replace("_", " ")) }
         )}
       />
+      <InteractiveGuides />
       <div className="ws-tabs">
         <Button variant="ghost" className={tab === "appearance" ? "active" : ""} onClick={() => setTab("appearance")}>Appearance</Button>
         <button
@@ -4776,6 +4787,7 @@ export function SettingsPage({ role, navigate, integrationsTab, workspaceId = Nu
         </button>
         <button
           className={tab === "pricing" ? "active" : ""}
+          data-tour="settings-pricing-tab"
           onClick={() => setTab("pricing")}
         >
           {t("Pricing")}
@@ -4788,6 +4800,7 @@ export function SettingsPage({ role, navigate, integrationsTab, workspaceId = Nu
         </button>
         <button
           className={tab === "team" ? "active" : ""}
+          data-tour="settings-team-tab"
           onClick={() => setTab("team")}
         >
           {t("Membership")}
@@ -4860,7 +4873,7 @@ function PricingSettings() {
   const patch = (change: Partial<Pricing>) =>
     setForm(current => ({ ...(current || pricing), ...change }));
   return (
-    <section className="ws-settings-section ws-card ws-card-pad">
+    <section className="ws-settings-section ws-card ws-card-pad" data-tour="settings-rates">
       <div className="ws-card-title">
         <div>
           <h2>{t("Rates & materials")}</h2>

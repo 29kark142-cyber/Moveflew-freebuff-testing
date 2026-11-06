@@ -145,7 +145,7 @@ export default function InventoryScanPage({ role }: ModuleProps) {
   };
 
   return (
-    <div className="ops">
+    <div className="ops" data-tour="inventory-page">
       <PageHead
         heading="Box inventory scanning"
         caption="Print a unique QR label for each box, then scan boxes onto the truck and at delivery. The job sheet flags anything missing."
@@ -156,7 +156,7 @@ export default function InventoryScanPage({ role }: ModuleProps) {
         }
       />
 
-      <div className="ws-card ws-card-pad space-y-3">
+      <div className="ws-card ws-card-pad space-y-3" data-tour="inventory-scan">
         <div className="flex flex-wrap items-end gap-3">
           <label className="ws-field">
             <span>Move date</span>
