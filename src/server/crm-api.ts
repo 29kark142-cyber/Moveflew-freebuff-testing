@@ -247,6 +247,7 @@ const SERVER_FIELDS = new Set([
   // Crew shift tokens, receipts and answers are written by the shift endpoints only.
   "crewDispatch",
   "crewShifts",
+  "preMoveReminders",
 ]);
 const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
@@ -1396,6 +1397,34 @@ async function route(ctx: Ctx, method: string, parts: string[], body: () => Prom
           results: invite.results,
         },
       };
+    }
+    // Pre-move reminders: GET the schedule and previews, POST sends or resends one now.
+    if (sub === "reminders") {
+      if (!["admin", "office_admin", "dispatcher"].includes(ctx.role ?? ""))
+        fail(403, "Only dispatch staff can send pre-move reminders");
+      const { ReminderError, reminderPanel, sendPreMoveReminder } = await import("./reminders");
+      const { isPreMoveReminderKind } = await import("../shared/reminders");
+      const deps = {
+        db: ctx.db,
+        wsId: requireWs(ctx),
+        userId: ctx.userId,
+        origin: ctx.origin ?? "https://invalid.local",
+        save: (jobId: number, patch: Record<string, unknown>) => saveData(ctx, jobId, patch),
+      };
+      const job = { id, data: (await getOne(ctx, "job", id)).data };
+      if (method === "GET") return reminderPanel(deps, job);
+      if (method === "POST") {
+        const b = (await body()) as { kind?: unknown; force?: unknown };
+        const kind = b.kind;
+        if (!isPreMoveReminderKind(kind)) throw new HttpError(400, "Unknown pre-move reminder");
+        try {
+          const result = await sendPreMoveReminder(deps, job, kind, { force: Boolean(b.force) });
+          return { ...result, panel: await reminderPanel(deps, job) };
+        } catch (error) {
+          if (error instanceof ReminderError) fail(error.status, error.message);
+          throw error;
+        }
+      }
     }
     if (sub === "clock" && method === "POST") {
       const { action } = (await body()) as { action?: string };

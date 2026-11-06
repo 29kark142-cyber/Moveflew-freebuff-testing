@@ -2,6 +2,7 @@ import { clampDiscountPercent } from "./route-pricing";
 import type { SurchargeSettings } from "./surcharges";
 import type { JobActivityEvent } from "./job-activity";
 import type { CrewShift } from "./shift";
+import type { PreMoveReminderState } from "./reminders";
 import type { MoveChecklistState } from "./move-checklist";
 
 export type WorkspaceRole =
@@ -87,6 +88,8 @@ export type Job = {
   activity?: JobActivityEvent[];
   /** Per-crew shift confirmation tokens and answers written by dispatch. */
   crewShifts?: CrewShift[];
+  /** 24h and 2h pre-move reminder dispatches written by the reminder engine. */
+  preMoveReminders?: PreMoveReminderState;
   invoiceStatus: string;
   actualHours: number | null;
   finalTotal: number | null;
